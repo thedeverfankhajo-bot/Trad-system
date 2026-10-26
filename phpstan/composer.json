@@ -3,7 +3,7 @@
   "description": "Development-only API-aware static analysis for TradeSystem.",
   "type": "project",
   "require": {
-    "pocketmine/pocketmine-mp": "5.44.4"
+    "pocketmine/pocketmine-mp": "5.44.3"
   },
   "require-dev": {
     "phpstan/phpstan": "2.1.46"
