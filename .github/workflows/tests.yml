@@ -29,4 +29,5 @@ jobs:
         run: php tests/run.php
 
       - name: Parse plugin manifest and YAML resources
-        run: ruby -e 'require "yaml"; ARGV.each { |p| YAML.load_file(p, aliases: true); puts "Valid YAML: #{p}" }' plugin.yml resources/config.yml resources/messages.yml
+        run: |
+          ruby -e 'require "yaml"; ARGV.each { |p| YAML.load_file(p, aliases: true); puts "Valid YAML: #{p}" }' plugin.yml resources/config.yml resources/messages.yml
