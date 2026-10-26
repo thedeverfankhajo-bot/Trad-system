@@ -2,7 +2,7 @@
   "name": "thedeverfankhajo-bot/trade-system",
   "description": "Secure player-to-player item trading for PocketMine-MP API 5.",
   "type": "project",
-  "license": "UNLICENSED",
+  "license": "proprietary",
   "require": {
     "php": ">=8.1"
   },

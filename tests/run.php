@@ -138,6 +138,7 @@ foreach($requiredFiles as $file){
 }
 $composer = json_decode((string) file_get_contents($root . '/composer.json'), true);
 $assert(is_array($composer) && ($composer['name'] ?? null) === 'thedeverfankhajo-bot/trade-system', 'composer.json is valid JSON and has the expected package name.');
+$assert(($composer['license'] ?? null) === 'proprietary', 'composer.json identifies the project as proprietary instead of claiming an open-source SPDX license.');
 $manifest = (string) file_get_contents($root . '/plugin.yml');
 $assert(str_contains($manifest, 'name: TradeSystem'), 'plugin.yml declares the plugin name.');
 $assert(str_contains($manifest, 'main: TradSystem\\Main'), 'plugin.yml points to the Main class.');

@@ -131,4 +131,4 @@ tests/
 
 ## License
 
-No license was present in the original empty repository. No new open-source license is asserted by this initial scaffold; clarify the project's desired license before public redistribution.
+No open-source license was provided for this repository. The Composer metadata uses `proprietary` to avoid falsely declaring an SPDX open-source license; this does not grant open-source redistribution rights. Obtain permission from the repository owner before redistributing or reusing the code beyond rights provided by applicable law.
