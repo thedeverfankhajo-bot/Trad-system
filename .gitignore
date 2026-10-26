@@ -4,3 +4,4 @@
 /coverage/
 *.phar
 .DS_Store
+/phpstan/vendor/

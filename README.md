@@ -95,7 +95,7 @@ Before final commit, offered items remain where they were and are not escrowed o
 - **Recovery procedure:** stop the server, inspect the critical log and both players' saved inventories, manually reconcile any discrepancy from trusted backups, then remove only the repaired players' UUID entries from `trade-quarantine.json` and remove `trade-quarantine.json.unsafe` only after the full quarantine has been reviewed. Delete stale `.tmp` files only after reconciliation. Restart and verify the logs before enabling player trading. Do not clear quarantine merely to restore access without checking item conservation.
 - This repository has automated domain/state smoke tests but does not claim to have run a live PMMP server integration test. Follow `tests/README.md` before production rollout.
 
-## Build, lint, and tests
+## Build, lint, static analysis, and tests
 
 ```bash
 php -l src/TradSystem/Main.php
@@ -104,7 +104,15 @@ php tests/run.php
 composer validate --no-check-publish
 ```
 
-If Composer is installed, `composer lint` and `composer test` provide shortcuts. A staging PocketMine-MP API 5 server is required to prove actual Bedrock form behavior and inventory integration. The full 21-scenario integration plan is in [`tests/README.md`](tests/README.md).
+For API-aware static analysis, use a PHP runtime configured for PocketMine-MP API 5 and run:
+
+```bash
+cd phpstan
+composer update --prefer-dist
+vendor/bin/phpstan analyse --no-progress
+```
+
+The separate `phpstan/` development environment pins the PMMP API reference to 5.44.4 and PHPStan to 2.1.46; these are analysis-only dependencies, not runtime plugin dependencies. GitHub Actions runs this analysis separately from the PHP 8.1–8.4 syntax/smoke-test matrix. The first dependency resolution generates a local `phpstan/composer.lock`; retain that lock in local workflows to make subsequent analyses reproducible. A staging PocketMine-MP API 5 server is still required to prove actual Bedrock form behavior and inventory integration. The full 21-scenario integration plan is in [`tests/README.md`](tests/README.md).
 
 ## Project structure
 

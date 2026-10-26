@@ -51,3 +51,25 @@ jobs:
               puts "Valid YAML: #{path}"
             end
           ' resources/config.yml resources/messages.yml
+
+  phpstan:
+    name: PHPStan (PocketMine-MP API 5)
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PocketMine-compatible PHP
+        uses: pmmp/setup-php-action@3.2.0
+        with:
+          php-version: "8.3"
+          install-path: "./bin"
+          pm-version-major: 5
+
+      - name: Resolve API-aware analysis dependencies
+        working-directory: ./phpstan
+        run: composer update --prefer-dist --no-interaction
+
+      - name: Analyze source with PHPStan
+        working-directory: ./phpstan
+        run: vendor/bin/phpstan analyse --no-progress

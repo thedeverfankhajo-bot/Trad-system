@@ -1,0 +1,19 @@
+{
+  "name": "thedeverfankhajo-bot/tradesystem-phpstan",
+  "description": "Development-only API-aware static analysis for TradeSystem.",
+  "type": "project",
+  "require": {
+    "pocketmine/pocketmine-mp": "5.44.4"
+  },
+  "require-dev": {
+    "phpstan/phpstan": "2.1.46"
+  },
+  "autoload": {
+    "psr-4": {
+      "TradSystem\\": "../src/"
+    }
+  },
+  "config": {
+    "sort-packages": true
+  }
+}
