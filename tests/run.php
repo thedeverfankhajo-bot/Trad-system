@@ -101,6 +101,14 @@ $listQuarantine = new TradeQuarantineStore($listQuarantinePath, $onQuarantineErr
 $assert($listQuarantine->isUnsafe(), 'A JSON list is rejected as a malformed quarantine root rather than treated as an empty store.');
 @unlink($listQuarantinePath);
 
+$pendingMarkerPath = $quarantinePath . '.pending';
+file_put_contents($pendingMarkerPath . '.tmp', '{"uuid-a":');
+file_put_contents($pendingMarkerPath, '{}');
+$pendingMarker = new TradeQuarantineStore($pendingMarkerPath, $onQuarantineError);
+$assert($pendingMarker->isUnsafe(), 'A surviving temporary quarantine write prevents re-enabling trades after restart.');
+@unlink($pendingMarkerPath);
+@unlink($pendingMarkerPath . '.tmp');
+
 $root = dirname(__DIR__);
 $requiredFiles = [
     'plugin.yml', 'composer.json', 'README.md', 'resources/config.yml', 'resources/messages.yml',

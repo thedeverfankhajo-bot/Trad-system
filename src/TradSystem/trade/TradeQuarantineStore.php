@@ -63,6 +63,13 @@ final class TradeQuarantineStore{
     }
 
     private function load() : void{
+        // A surviving temp file means a prior persistence attempt may have
+        // stopped between writing the journal and atomically replacing the
+        // canonical file. Never trust the older file in that situation.
+        if(file_exists($this->path . ".tmp")){
+            $this->markUnsafe("Found an incomplete TradeSystem quarantine write; all trading is disabled.");
+            return;
+        }
         if(!file_exists($this->path)){
             return;
         }
@@ -119,12 +126,13 @@ final class TradeQuarantineStore{
         $temporaryPath = $this->path . ".tmp";
         $written = @file_put_contents($temporaryPath, $serialized, LOCK_EX);
         if($written === false || $written !== strlen($serialized)){
-            @unlink($temporaryPath);
+            // Keep a possible partial temp file as a startup fail-closed marker.
             $this->markUnsafe("Unable to write TradeSystem quarantine data; all trading is disabled.");
             return false;
         }
         if(!@rename($temporaryPath, $this->path)){
-            @unlink($temporaryPath);
+            // Keep the complete temp file on disk. On restart, load() sees it
+            // and refuses to trust the potentially stale canonical quarantine.
             $this->markUnsafe("Unable to atomically replace TradeSystem quarantine data; all trading is disabled.");
             return false;
         }
