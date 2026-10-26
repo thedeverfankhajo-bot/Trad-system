@@ -78,24 +78,27 @@ final class TradeQuarantineStore{
         }
 
         try{
-            $decoded = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+            // The persisted format is an object keyed by player UUID. Decode as
+            // objects so a valid empty object ({}) cannot be confused with the
+            // invalid empty/list array ([]) when associative decoding is used.
+            $decoded = json_decode($content, false, 512, JSON_THROW_ON_ERROR);
         }catch(JsonException){
             $this->markUnsafe("TradeSystem quarantine file contains invalid JSON; all trading is disabled.");
             return;
         }
-        if(!is_array($decoded)){
-            $this->markUnsafe("TradeSystem quarantine file has an invalid structure; all trading is disabled.");
+        if(!$decoded instanceof \\stdClass){
+            $this->markUnsafe("TradeSystem quarantine file has an invalid root type; all trading is disabled.");
             return;
         }
 
         foreach($decoded as $uuid => $entry){
-            if(!is_string($uuid) || $uuid === "" || !is_array($entry) || !isset($entry["at"], $entry["reason"]) || !is_string($entry["at"]) || !is_string($entry["reason"])){
+            if(!is_string($uuid) || $uuid === "" || !$entry instanceof \\stdClass || !isset($entry->at, $entry->reason) || !is_string($entry->at) || !is_string($entry->reason)){
                 $this->markUnsafe("TradeSystem quarantine file has an invalid entry; all trading is disabled.");
                 return;
             }
             $this->entries[$uuid] = [
-                "at" => $entry["at"],
-                "reason" => $entry["reason"]
+                "at" => $entry->at,
+                "reason" => $entry->reason
             ];
         }
     }

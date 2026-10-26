@@ -95,6 +95,12 @@ $assert($quarantineErrors !== [], 'Quarantine persistence failures are reported 
 @unlink($corruptQuarantinePath);
 @unlink($corruptQuarantinePath . '.tmp');
 
+$listQuarantinePath = $quarantinePath . '.list';
+file_put_contents($listQuarantinePath, '[]');
+$listQuarantine = new TradeQuarantineStore($listQuarantinePath, $onQuarantineError);
+$assert($listQuarantine->isUnsafe(), 'A JSON list is rejected as a malformed quarantine root rather than treated as an empty store.');
+@unlink($listQuarantinePath);
+
 $root = dirname(__DIR__);
 $requiredFiles = [
     'plugin.yml', 'composer.json', 'README.md', 'resources/config.yml', 'resources/messages.yml',
