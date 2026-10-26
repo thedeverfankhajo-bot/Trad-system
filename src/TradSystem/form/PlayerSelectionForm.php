@@ -17,13 +17,14 @@ final class PlayerSelectionForm{
             return;
         }
         $names = array_map(static fn(Player $target) : string => $target->getName(), $targets);
+        $targetUuids = array_map(static fn(Player $target) : string => $target->getUniqueId()->toString(), $targets);
         $player->sendForm(new SimpleForm(
             $player->getUniqueId()->toString(),
             $messages->get('ui-players-title'),
             $messages->get('ui-players-content'),
             $names,
-            static function(Player $responsePlayer, int $index) use ($manager, $names) : void{
-                $manager->sendRequest($responsePlayer, $names[$index]);
+            static function(Player $responsePlayer, int $index) use ($manager, $targetUuids) : void{
+                $manager->sendRequestToUuid($responsePlayer, $targetUuids[$index]);
             }
         ));
     }

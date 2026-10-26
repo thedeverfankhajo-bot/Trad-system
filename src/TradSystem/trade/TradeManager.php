@@ -140,6 +140,23 @@ final class TradeManager{
             $this->messages->send($sender, 'player-not-found', ['player' => $targetName]);
             return;
         }
+        $this->sendRequestToTarget($sender, $target);
+    }
+
+    /**
+     * Resolves a UI-selected player by the UUID captured when the form was built.
+     * The subsequent request creation remains synchronous on PMMP's main thread.
+     */
+    public function sendRequestToUuid(Player $sender, string $targetUuid) : void{
+        $target = $this->findOnlinePlayerByUuid($targetUuid);
+        if($target === null){
+            $this->messages->send($sender, 'player-not-found', ['player' => $targetUuid]);
+            return;
+        }
+        $this->sendRequestToTarget($sender, $target);
+    }
+
+    private function sendRequestToTarget(Player $sender, Player $target) : void{
         $senderUuid = $sender->getUniqueId()->toString();
         $targetUuid = $target->getUniqueId()->toString();
         if($senderUuid === $targetUuid){
