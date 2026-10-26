@@ -71,6 +71,8 @@ $assert(str_contains($manifest, 'main: TradSystem\\Main'), 'plugin.yml points to
 $managerSource = (string) file_get_contents($root . '/src/TradSystem/trade/TradeManager.php');
 $amountFormSource = (string) file_get_contents($root . '/src/TradSystem/form/OfferAmountForm.php');
 $assert(str_contains($managerSource, 'int $expectedRevision') && str_contains($amountFormSource, '$expectedRevision'), 'Quantity-form callbacks are bound to the trade-offer revision.');
+$selectionSource = (string) file_get_contents($root . '/src/TradSystem/form/PlayerSelectionForm.php');
+$assert(str_contains($managerSource, 'function sendRequestToUuid') && str_contains($selectionSource, '$targetUuids[$index]'), 'Player selection callbacks resolve the captured UUID, not just a display name.');
 $executorSource = (string) file_get_contents($root . '/src/TradSystem/trade/TradeExecutor.php');
 $assert(str_contains($executorSource, 'setMaxStackSize($source->getMaxStackSize())'), 'Capacity simulation mirrors the source inventory max stack size.');
 $config = (string) file_get_contents($root . '/resources/config.yml');

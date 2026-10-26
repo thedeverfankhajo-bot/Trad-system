@@ -502,7 +502,7 @@ final class TradeManager{
             $this->audit('CANCELLED_PLAYER_LEFT', $session, 'player ' . $uuid . ' disconnected');
         }
 
-        foreach($this->requests as $request){
+        foreach(array_values($this->requests) as $request){
             if($request->senderUuid === $uuid || $request->receiverUuid === $uuid){
                 $otherUuid = $request->senderUuid === $uuid ? $request->receiverUuid : $request->senderUuid;
                 $other = $this->findOnlinePlayerByUuid($otherUuid);
