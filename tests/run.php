@@ -116,6 +116,16 @@ $assert($pendingMarker->isUnsafe(), 'A surviving temporary quarantine write prev
 @unlink($pendingMarkerPath . '.tmp');
 @unlink($pendingMarkerPath . '.unsafe');
 
+$missingDirectory = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'tradesystem-missing-' . bin2hex(random_bytes(8));
+$unwritableQuarantinePath = $missingDirectory . DIRECTORY_SEPARATOR . 'trade-quarantine.json';
+$unwritableStore = new TradeQuarantineStore($unwritableQuarantinePath, $onQuarantineError);
+$assert($unwritableStore->quarantine('uuid-c', 'inventory-rollback-failed') === false, 'An unavailable quarantine directory must not claim persistence success.');
+$assert($unwritableStore->isUnsafe(), 'A quarantine write failure permanently marks the current store unsafe.');
+$assert(
+    count(array_filter($quarantineErrors, static fn(string $message) : bool => str_contains($message, 'Unable to persist safety marker'))) > 0,
+    'Failure to persist the independent safety lock is reported for emergency server shutdown.'
+);
+
 $root = dirname(__DIR__);
 $requiredFiles = [
     'plugin.yml', 'composer.json', 'README.md', 'resources/config.yml', 'resources/messages.yml',

@@ -2,7 +2,7 @@
 
 ## Automated checks in this repository
 
-- `php tests/run.php`: smoke tests for request expiration, participant authorization, state transitions, two-party confirmation, duplicate commit prevention, confirmation reset, safe one-pass message interpolation, item display-name sanitization, persistent rollback quarantine, corrupt-store fail-closed behavior, and required project files/configuration.
+- `php tests/run.php`: smoke tests for request expiration, participant authorization, state transitions, two-party confirmation, duplicate commit prevention, confirmation reset, safe one-pass message interpolation, item display-name sanitization, persistent rollback quarantine, corrupt/list-root fail-closed behavior, incomplete-write safety markers, failed-storage handling, and required project files/configuration.
 - `composer lint`: PHP syntax validation for every source and test file.
 - GitHub Actions: Composer manifest validation, PHP syntax checks, smoke tests, and YAML parsing of the manifest and resources.
 
