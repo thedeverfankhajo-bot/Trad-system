@@ -86,13 +86,13 @@ final class TradeQuarantineStore{
             $this->markUnsafe("TradeSystem quarantine file contains invalid JSON; all trading is disabled.");
             return;
         }
-        if(!$decoded instanceof \\stdClass){
+        if(!$decoded instanceof \stdClass){
             $this->markUnsafe("TradeSystem quarantine file has an invalid root type; all trading is disabled.");
             return;
         }
 
         foreach($decoded as $uuid => $entry){
-            if(!is_string($uuid) || $uuid === "" || !$entry instanceof \\stdClass || !isset($entry->at, $entry->reason) || !is_string($entry->at) || !is_string($entry->reason)){
+            if(!is_string($uuid) || $uuid === "" || !$entry instanceof \stdClass || !isset($entry->at, $entry->reason) || !is_string($entry->at) || !is_string($entry->reason)){
                 $this->markUnsafe("TradeSystem quarantine file has an invalid entry; all trading is disabled.");
                 return;
             }
