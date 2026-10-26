@@ -7,6 +7,7 @@ namespace TradSystem\form;
 use pocketmine\item\Item;
 use pocketmine\player\Player;
 use TradSystem\trade\TradeManager;
+use TradSystem\util\ItemDisplayName;
 
 final class OfferAmountForm{
     public static function send(TradeManager $manager, Player $player, string $sessionId, int $slot, int $maxAmount, string $itemName, Item $sourceSnapshot, int $expectedRevision) : void{
@@ -25,7 +26,7 @@ final class OfferAmountForm{
             $messages->get('ui-quantity-title'),
             [[
                 'type' => 'dropdown',
-                'text' => $messages->get('ui-quantity-content') . "\n$itemName — Slot $slot",
+                'text' => $messages->get('ui-quantity-content') . "\n" . ItemDisplayName::sanitize($itemName) . " — Slot $slot",
                 'options' => $options,
                 'default' => 0
             ]],

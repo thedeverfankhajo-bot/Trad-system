@@ -2,11 +2,11 @@
 
 ## Automated checks in this repository
 
-- `php tests/run.php`: smoke tests for request expiration, participant authorization, state transitions, two-party confirmation, duplicate commit prevention, confirmation reset, and required project files/configuration.
+- `php tests/run.php`: smoke tests for request expiration, participant authorization, state transitions, two-party confirmation, duplicate commit prevention, confirmation reset, safe one-pass message interpolation, item display-name sanitization, and required project files/configuration.
 - `composer lint`: PHP syntax validation for every source and test file.
 - GitHub Actions: Composer manifest validation, PHP syntax checks, smoke tests, and YAML parsing of the manifest and resources.
 
-These tests do not emulate PMMP's real inventory transaction/event pipeline and are not evidence that a live server inventory transfer was tested.
+These tests do not emulate PMMP's real inventory transaction/event pipeline and are not evidence that a live server inventory transfer was tested. The display-name and message interpolation checks are pure utility tests; executor integration remains a server-level test.
 
 ## Required PocketMine-MP integration test plan
 

@@ -10,6 +10,7 @@ A dependency-free player-to-player **item trading** plugin for PocketMine-MP API
 - Offer multiple source inventory slots and choose amounts without moving items into a temporary inventory.
 - Two-party confirmation; any offer change clears both confirmations.
 - Source stack count, item identity, damage, and compound metadata are revalidated just before commit.
+- Item names shown in trade forms are sanitized against formatting, line-break, and bidirectional-text spoofing; message placeholders are interpolated in one pass.
 - Both target inventories are simulated after outgoing items are removed, so those newly freed slots are considered before capacity rejection.
 - Synchronous main-thread commit, pre-commit inventory snapshots, post-commit verification, rollback attempts, stale-form/session validation, and idempotent cleanup.
 - Configurable messages and optional sound effects; concise audit records omit NBT.

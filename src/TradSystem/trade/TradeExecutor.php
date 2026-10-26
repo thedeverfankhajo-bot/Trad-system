@@ -119,31 +119,51 @@ final class TradeExecutor{
 
     /** @param array<int, Item> $contents */
     private function apply(PlayerInventory $inventory, array $contents) : void{
+        if(count($contents) !== $inventory->getSize()){
+            throw new \RuntimeException('Transaction plan does not cover every inventory slot');
+        }
         for($slot = 0; $slot < $inventory->getSize(); ++$slot){
-            $item = $contents[$slot] ?? null;
-            if(!$item instanceof Item){
+            if(!isset($contents[$slot]) || !$contents[$slot] instanceof Item){
                 throw new \RuntimeException("Transaction plan is missing slot $slot");
             }
-            $inventory->setItem($slot, clone $item);
         }
+
+        // Apply a complete, pre-validated snapshot in one public inventory operation.
+        $inventory->setContents($contents);
     }
 
     /** @param array<int, Item> $contents */
     private function restore(PlayerInventory $inventory, array $contents) : bool{
-        $success = true;
-        for($slot = 0; $slot < $inventory->getSize(); ++$slot){
-            try{
-                $item = $contents[$slot] ?? null;
+        // First try a whole-inventory restore. If a listener or implementation throws,
+        // fall back to slot-by-slot restoration and verify the result either way.
+        try{
+            $inventory->setContents($contents);
+        }catch(Throwable){
+            // Continue with the recovery path below.
+        }
+
+        if(!$this->contentsMatchSafely($inventory, $contents)){
+            foreach($contents as $slot => $item){
                 if(!$item instanceof Item){
-                    $success = false;
                     continue;
                 }
-                $inventory->setItem($slot, clone $item);
-            }catch(Throwable){
-                $success = false;
+                try{
+                    $inventory->setItem($slot, clone $item);
+                }catch(Throwable){
+                    // Keep attempting other slots; final verification determines safety.
+                }
             }
         }
-        return $success && $this->contentsMatch($inventory, $contents);
+        return $this->contentsMatchSafely($inventory, $contents);
+    }
+
+    /** @param array<int, Item> $expected */
+    private function contentsMatchSafely(PlayerInventory $inventory, array $expected) : bool{
+        try{
+            return $this->contentsMatch($inventory, $expected);
+        }catch(Throwable){
+            return false;
+        }
     }
 
     /** @param array<int, Item> $expected */

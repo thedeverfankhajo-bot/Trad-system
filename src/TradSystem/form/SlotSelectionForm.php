@@ -6,6 +6,7 @@ namespace TradSystem\form;
 
 use pocketmine\player\Player;
 use TradSystem\trade\TradeManager;
+use TradSystem\util\ItemDisplayName;
 
 final class SlotSelectionForm{
     public static function send(TradeManager $manager, Player $player, string $sessionId) : void{
@@ -26,7 +27,7 @@ final class SlotSelectionForm{
             }
             $slots[] = $slot;
             $snapshots[$slot] = clone $item;
-            $buttons[] = $manager->getMessages()->get('ui-slot-line', ['slot' => $slot, 'item' => $item->getName(), 'count' => $item->getCount()]);
+            $buttons[] = $manager->getMessages()->get('ui-slot-line', ['slot' => $slot, 'item' => ItemDisplayName::sanitize($item->getName()), 'count' => $item->getCount()]);
         }
         if($buttons === []){
             $manager->getMessages()->send($player, 'ui-no-items');

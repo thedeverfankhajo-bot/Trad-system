@@ -18,6 +18,7 @@ use TradSystem\form\RemoveOfferForm;
 use TradSystem\form\SlotSelectionForm;
 use TradSystem\form\TradeConfirmationForm;
 use TradSystem\form\TradeOfferForm;
+use TradSystem\util\ItemDisplayName;
 use TradSystem\util\Messages;
 
 final class TradeManager{
@@ -480,7 +481,7 @@ final class TradeManager{
         foreach($offers as $slot => $offer){
             $lines[] = $this->messages->get('ui-offer-line', [
                 'slot' => $slot,
-                'item' => $offer->getItemName(),
+                'item' => ItemDisplayName::sanitize($offer->getItemName()),
                 'count' => $offer->offeredCount
             ]);
         }
@@ -731,7 +732,7 @@ final class TradeManager{
     private function auditOfferSummary(array $offers) : string{
         $parts = [];
         foreach($offers as $slot => $offer){
-            $name = str_replace(['{', '}', "\r", "\n", '|'], '_', $offer->getItemName());
+            $name = str_replace(['{', '}', '|', ',', ':'], '_', ItemDisplayName::sanitize($offer->getItemName()));
             $parts[] = $slot . ':' . $name . 'x' . $offer->offeredCount;
         }
         return implode(',', $parts);

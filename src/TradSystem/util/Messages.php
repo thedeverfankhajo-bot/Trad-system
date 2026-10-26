@@ -19,10 +19,7 @@ final class Messages{
         if(!is_string($value)){
             $value = $key;
         }
-        foreach($variables as $name => $replacement){
-            $value = str_replace('%' . $name . '%', (string) $replacement, $value);
-        }
-        return $value;
+        return MessageFormatter::interpolate($value, $variables);
     }
 
     /** @param array<string, int|float|string> $variables */

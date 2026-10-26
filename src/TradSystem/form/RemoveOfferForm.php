@@ -6,6 +6,7 @@ namespace TradSystem\form;
 
 use pocketmine\player\Player;
 use TradSystem\trade\TradeManager;
+use TradSystem\util\ItemDisplayName;
 
 final class RemoveOfferForm{
     public static function send(TradeManager $manager, Player $player, string $sessionId) : void{
@@ -26,7 +27,7 @@ final class RemoveOfferForm{
         $buttons = [];
         foreach($offers as $slot => $offer){
             $slots[] = $slot;
-            $buttons[] = $manager->getMessages()->get('ui-remove-line', ['slot' => $slot, 'item' => $offer->getItemName(), 'count' => $offer->offeredCount]);
+            $buttons[] = $manager->getMessages()->get('ui-remove-line', ['slot' => $slot, 'item' => ItemDisplayName::sanitize($offer->getItemName()), 'count' => $offer->offeredCount]);
         }
         $buttons[] = $manager->getMessages()->get('ui-back-offer');
         $slots[] = -1;

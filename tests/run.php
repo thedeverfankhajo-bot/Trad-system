@@ -5,10 +5,14 @@ declare(strict_types=1);
 use TradSystem\trade\TradeRequest;
 use TradSystem\trade\TradeSession;
 use TradSystem\trade\TradeState;
+use TradSystem\util\ItemDisplayName;
+use TradSystem\util\MessageFormatter;
 
 require __DIR__ . '/../src/TradSystem/trade/TradeState.php';
 require __DIR__ . '/../src/TradSystem/trade/TradeSession.php';
 require __DIR__ . '/../src/TradSystem/trade/TradeRequest.php';
+require __DIR__ . '/../src/TradSystem/util/MessageFormatter.php';
+require __DIR__ . '/../src/TradSystem/util/ItemDisplayName.php';
 
 $tests = 0;
 $failures = [];
@@ -18,6 +22,19 @@ $assert = static function(bool $condition, string $description) use (&$tests, &$
         $failures[] = $description;
     }
 };
+
+$assert(
+    MessageFormatter::interpolate('Offer %item% x%count%', ['item' => '%count% §cSword', 'count' => 3]) === 'Offer %count% §cSword x3',
+    'Template replacement values are inserted once and are not re-interpolated.'
+);
+$assert(
+    ItemDisplayName::sanitize("§cDiamond\n§lSword") === 'Diamond Sword',
+    'Item display names cannot inject formatting codes or extra form lines.'
+);
+$assert(
+    ItemDisplayName::sanitize("§bAdmin\nSlot %count%\u{202E}") === 'Admin Slot %count%',
+    'Item display labels neutralize line breaks and bidirectional override controls.'
+);
 
 $session = new TradeSession('session-1', 'uuid-a', 'uuid-b', 'Alice', 'Bob', time() + 300);
 $assert($session->getState() === TradeState::OFFERING, 'A new session starts in OFFERING.');
@@ -75,6 +92,8 @@ $selectionSource = (string) file_get_contents($root . '/src/TradSystem/form/Play
 $assert(str_contains($managerSource, 'function sendRequestToUuid') && str_contains($selectionSource, '$targetUuids[$index]'), 'Player selection callbacks resolve the captured UUID, not just a display name.');
 $executorSource = (string) file_get_contents($root . '/src/TradSystem/trade/TradeExecutor.php');
 $assert(str_contains($executorSource, 'setMaxStackSize($source->getMaxStackSize())'), 'Capacity simulation mirrors the source inventory max stack size.');
+$assert(str_contains($managerSource, 'ItemDisplayName::sanitize($offer->getItemName())'), 'Offer summaries sanitize item-controlled display names.');
+$assert(str_contains($executorSource, '$inventory->setContents($contents);'), 'Inventory plans are applied as a complete contents snapshot.');
 $config = (string) file_get_contents($root . '/resources/config.yml');
 foreach(['request-timeout-seconds', 'trade-timeout-seconds', 'max-offer-slots', 'max-items-per-offer', 'max-trades-per-minute', 'cooldown-seconds', 'allow-self-trade', 'messages-prefix', 'sound-effects', 'enable-audit-log'] as $key){
     $assert(str_contains($config, $key . ':'), 'config.yml contains required setting ' . $key . '.');
