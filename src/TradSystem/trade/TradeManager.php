@@ -46,6 +46,10 @@ final class TradeManager{
             $this->plugin->getDataFolder() . 'trade-quarantine.json',
             function(string $message) : void{
                 $this->plugin->getLogger()->critical($message);
+                if(str_contains($message, 'Unable to persist safety marker')){
+                    $this->plugin->getLogger()->critical('TradeSystem is stopping the server because the rollback failure could not be durably locked.');
+                    $this->plugin->getServer()->shutdown();
+                }
             }
         );
     }
@@ -687,6 +691,11 @@ final class TradeManager{
     private function quarantinePlayer(string $uuid) : void{
         if(!$this->quarantineStore->quarantine($uuid, 'inventory-rollback-failed')){
             $this->plugin->getLogger()->critical('Trade quarantine could not be persisted; all trading is now fail-closed.');
+            if($this->quarantineStore->isUnsafe()){
+                // If the data directory cannot persist either the quarantine or
+                // its independent lock marker, continuing the server is unsafe.
+                $this->plugin->getServer()->shutdown();
+            }
         }
         foreach(array_values($this->requests) as $request){
             if($request->senderUuid !== $uuid && $request->receiverUuid !== $uuid){

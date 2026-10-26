@@ -80,6 +80,7 @@ $onQuarantineError = static function(string $message) use (&$quarantineErrors) :
 $quarantineStore = new TradeQuarantineStore($quarantinePath, $onQuarantineError);
 $assert(!$quarantineStore->isUnsafe(), 'A missing quarantine file is a safe empty starting state.');
 $assert($quarantineStore->quarantine('uuid-a', 'inventory-rollback-failed') === true, 'A rollback failure is persisted to the quarantine file.');
+$assert(!is_file($quarantinePath . '.unsafe'), 'A successful quarantine write does not leave the persistent safety-lock marker.');
 $assert($quarantineStore->contains('uuid-a'), 'A quarantined UUID is blocked in the current process.');
 $reloadedQuarantine = new TradeQuarantineStore($quarantinePath, $onQuarantineError);
 $assert(!$reloadedQuarantine->isUnsafe() && $reloadedQuarantine->contains('uuid-a'), 'Quarantine survives reconstruction across plugin restarts.');
@@ -90,16 +91,21 @@ $corruptQuarantinePath = $quarantinePath . '.corrupt';
 file_put_contents($corruptQuarantinePath, '{ invalid JSON');
 $corruptQuarantine = new TradeQuarantineStore($corruptQuarantinePath, $onQuarantineError);
 $assert($corruptQuarantine->isUnsafe(), 'Corrupt quarantine data activates fail-closed mode.');
+$assert(is_file($corruptQuarantinePath . '.unsafe'), 'Corrupt quarantine data creates a persistent safety-lock marker.');
+$lockedCorrupt = new TradeQuarantineStore($corruptQuarantinePath, $onQuarantineError);
+$assert($lockedCorrupt->isUnsafe(), 'The persisted lock keeps trading disabled after a new store instance is created.');
 $assert($corruptQuarantine->quarantine('uuid-b', 'inventory-rollback-failed') === false, 'An unsafe quarantine store refuses to claim that a new quarantine is persisted.');
 $assert($quarantineErrors !== [], 'Quarantine persistence failures are reported through the supplied logger callback.');
 @unlink($corruptQuarantinePath);
 @unlink($corruptQuarantinePath . '.tmp');
+@unlink($corruptQuarantinePath . '.unsafe');
 
 $listQuarantinePath = $quarantinePath . '.list';
 file_put_contents($listQuarantinePath, '[]');
 $listQuarantine = new TradeQuarantineStore($listQuarantinePath, $onQuarantineError);
 $assert($listQuarantine->isUnsafe(), 'A JSON list is rejected as a malformed quarantine root rather than treated as an empty store.');
 @unlink($listQuarantinePath);
+@unlink($listQuarantinePath . '.unsafe');
 
 $pendingMarkerPath = $quarantinePath . '.pending';
 file_put_contents($pendingMarkerPath . '.tmp', '{"uuid-a":');
@@ -108,6 +114,7 @@ $pendingMarker = new TradeQuarantineStore($pendingMarkerPath, $onQuarantineError
 $assert($pendingMarker->isUnsafe(), 'A surviving temporary quarantine write prevents re-enabling trades after restart.');
 @unlink($pendingMarkerPath);
 @unlink($pendingMarkerPath . '.tmp');
+@unlink($pendingMarkerPath . '.unsafe');
 
 $root = dirname(__DIR__);
 $requiredFiles = [

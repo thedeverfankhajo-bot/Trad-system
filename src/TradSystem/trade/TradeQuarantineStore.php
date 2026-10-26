@@ -63,6 +63,14 @@ final class TradeQuarantineStore{
     }
 
     private function load() : void{
+        // A persistent lock records an unsafe state even if the canonical
+        // quarantine could not be updated. It must be cleared only after
+        // manual inventory reconciliation by an administrator.
+        if(file_exists($this->path . ".unsafe")){
+            $this->markUnsafe("TradeSystem safety lock exists; manual inventory reconciliation is required before trading.");
+            return;
+        }
+
         // A surviving temp file means a prior persistence attempt may have
         // stopped between writing the journal and atomically replacing the
         // canonical file. Never trust the older file in that situation.
@@ -140,7 +148,20 @@ final class TradeQuarantineStore{
     }
 
     private function markUnsafe(string $message) : void{
+        $alreadyUnsafe = $this->unsafe;
         $this->unsafe = true;
+
+        $markerPath = $this->path . ".unsafe";
+        if(!$alreadyUnsafe && !file_exists($markerPath)){
+            $marker = "TradeSystem is locked because quarantine state could not be trusted. Reconcile player inventories and clear this file manually." . PHP_EOL;
+            $written = @file_put_contents($markerPath, $marker, LOCK_EX);
+            if($written === false || $written !== strlen($marker)){
+                // If no durable lock can be written, the manager must stop the
+                // server rather than silently permit trading after this process.
+                $message .= " Unable to persist safety marker at " . $markerPath . "; the server must stop immediately.";
+            }
+        }
+
         if($this->onError !== null){
             ($this->onError)($message);
         }
