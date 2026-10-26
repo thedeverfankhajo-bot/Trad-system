@@ -92,6 +92,12 @@ $selectionSource = (string) file_get_contents($root . '/src/TradSystem/form/Play
 $assert(str_contains($managerSource, 'function sendRequestToUuid') && str_contains($selectionSource, '$targetUuids[$index]'), 'Player selection callbacks resolve the captured UUID, not just a display name.');
 $executorSource = (string) file_get_contents($root . '/src/TradSystem/trade/TradeExecutor.php');
 $assert(str_contains($executorSource, 'setMaxStackSize($source->getMaxStackSize())'), 'Capacity simulation mirrors the source inventory max stack size.');
+$fingerprintSource = (string) file_get_contents($root . '/src/TradSystem/util/ItemFingerprint.php');
+$assert(
+    str_contains($fingerprintSource, '$current->equalsExact($snapshot)') &&
+    !str_contains($fingerprintSource, 'equals($snapshot, true, true)'),
+    'Item snapshot matching uses exact public comparison without deprecated equality arguments.'
+);
 $assert(str_contains($managerSource, 'ItemDisplayName::sanitize($offer->getItemName())'), 'Offer summaries sanitize item-controlled display names.');
 $assert(str_contains($executorSource, '$inventory->setContents($contents);'), 'Inventory plans are applied as a complete contents snapshot.');
 $config = (string) file_get_contents($root . '/resources/config.yml');
