@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace TradSystem\config;
 
-use pocketmine\utils\Logger;
-
 final class TradeConfig{
     public readonly int $requestTimeoutSeconds;
     public readonly int $tradeTimeoutSeconds;
@@ -18,7 +16,7 @@ final class TradeConfig{
     public readonly string $messagesPrefix;
 
     /** @param array<string, mixed> $values */
-    public function __construct(array $values, Logger $logger){
+    public function __construct(array $values, \AttachableLogger $logger){
         $this->requestTimeoutSeconds = self::boundedInt($values, 'request-timeout-seconds', 60, 10, 300, $logger);
         $this->tradeTimeoutSeconds = self::boundedInt($values, 'trade-timeout-seconds', 300, 30, 900, $logger);
         $this->maxOfferSlots = self::boundedInt($values, 'max-offer-slots', 8, 1, 36, $logger);

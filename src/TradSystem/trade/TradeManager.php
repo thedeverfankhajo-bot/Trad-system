@@ -294,7 +294,7 @@ final class TradeManager{
             return;
         }
         if($request === null || $request->receiverUuid !== $receiverUuid){
-            $this->messages->send($receiver, 'request-none', ['player' => $request?->senderName ?? 'unknown']);
+            $this->messages->send($receiver, 'request-none', ['player' => ($request === null ? 'unknown' : $request->senderName)]);
             return;
         }
         if($this->quarantineStore->contains($request->senderUuid)){
@@ -327,7 +327,7 @@ final class TradeManager{
         $request = $this->requests[$requestId] ?? null;
         $receiverUuid = $receiver->getUniqueId()->toString();
         if($request === null || $request->receiverUuid !== $receiverUuid){
-            $this->messages->send($receiver, 'request-none', ['player' => $request?->senderName ?? 'unknown']);
+            $this->messages->send($receiver, 'request-none', ['player' => ($request === null ? 'unknown' : $request->senderName)]);
             return;
         }
         $this->removeRequest($request);

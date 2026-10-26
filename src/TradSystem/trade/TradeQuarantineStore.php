@@ -106,7 +106,7 @@ final class TradeQuarantineStore{
             return;
         }
 
-        foreach($decoded as $uuid => $entry){
+        foreach(get_object_vars($decoded) as $uuid => $entry){
             if(!is_string($uuid) || $uuid === "" || !$entry instanceof \stdClass || !isset($entry->at, $entry->reason) || !is_string($entry->at) || !is_string($entry->reason)){
                 $this->markUnsafe("TradeSystem quarantine file has an invalid entry; all trading is disabled.");
                 return;

@@ -65,7 +65,7 @@ final class TradeExecutor{
         $usedSlots = [];
         foreach($offers as $key => $offer){
             $slot = $offer->sourceSlot;
-            if(!is_int($key) || $key !== $slot || isset($usedSlots[$slot]) || !$inventory->slotExists($slot)){
+            if($key !== $slot || isset($usedSlots[$slot]) || !$inventory->slotExists($slot)){
                 return false;
             }
             $usedSlots[$slot] = true;
@@ -123,7 +123,7 @@ final class TradeExecutor{
             throw new \RuntimeException('Transaction plan does not cover every inventory slot');
         }
         for($slot = 0; $slot < $inventory->getSize(); ++$slot){
-            if(!isset($contents[$slot]) || !$contents[$slot] instanceof Item){
+            if(!isset($contents[$slot])){
                 throw new \RuntimeException("Transaction plan is missing slot $slot");
             }
         }
