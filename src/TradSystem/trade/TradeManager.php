@@ -34,13 +34,21 @@ final class TradeManager{
     private array $requestTimes = [];
     /** @var array<string, int> player UUID => last request time */
     private array $lastRequestAt = [];
+    private TradeQuarantineStore $quarantineStore;
 
     public function __construct(
         private readonly Main $plugin,
         private readonly TradeConfig $config,
         private readonly Messages $messages,
         private readonly TradeExecutor $executor
-    ){}
+    ){
+        $this->quarantineStore = new TradeQuarantineStore(
+            $this->plugin->getDataFolder() . 'trade-quarantine.json',
+            function(string $message) : void{
+                $this->plugin->getLogger()->critical($message);
+            }
+        );
+    }
 
     public function getMessages() : Messages{
         return $this->messages;
@@ -51,6 +59,15 @@ final class TradeManager{
     }
 
     public function openPlayerSelectionForm(Player $player) : void{
+        $uuid = $player->getUniqueId()->toString();
+        if($this->quarantineStore->isUnsafe()){
+            $this->messages->send($player, 'trade-system-disabled');
+            return;
+        }
+        if($this->quarantineStore->contains($uuid)){
+            $this->messages->send($player, 'trade-quarantined');
+            return;
+        }
         PlayerSelectionForm::send($this, $player);
     }
 
@@ -120,10 +137,13 @@ final class TradeManager{
     /** @return list<Player> */
     public function getEligiblePlayers(Player $player) : array{
         $sourceUuid = $player->getUniqueId()->toString();
+        if($this->quarantineStore->isUnsafe() || $this->quarantineStore->contains($sourceUuid)){
+            return [];
+        }
         $eligible = [];
         foreach($this->plugin->getServer()->getOnlinePlayers() as $target){
             $targetUuid = $target->getUniqueId()->toString();
-            if($targetUuid === $sourceUuid || isset($this->activeByPlayer[$targetUuid]) || isset($this->activeByPlayer[$sourceUuid])){
+            if($this->quarantineStore->contains($targetUuid) || $targetUuid === $sourceUuid || isset($this->activeByPlayer[$targetUuid]) || isset($this->activeByPlayer[$sourceUuid])){
                 continue;
             }
             if(isset($this->requestByPair[$this->pairKey($sourceUuid, $targetUuid)])){
@@ -160,6 +180,18 @@ final class TradeManager{
     private function sendRequestToTarget(Player $sender, Player $target) : void{
         $senderUuid = $sender->getUniqueId()->toString();
         $targetUuid = $target->getUniqueId()->toString();
+        if($this->quarantineStore->isUnsafe()){
+            $this->messages->send($sender, 'trade-system-disabled');
+            return;
+        }
+        if($this->quarantineStore->contains($senderUuid)){
+            $this->messages->send($sender, 'trade-quarantined');
+            return;
+        }
+        if($this->quarantineStore->contains($targetUuid)){
+            $this->messages->send($sender, 'player-quarantined', ['player' => $target->getName()]);
+            return;
+        }
         if($senderUuid === $targetUuid){
             $this->messages->send($sender, 'player-self-trade');
             return;
@@ -248,8 +280,22 @@ final class TradeManager{
     public function acceptRequestById(Player $receiver, string $requestId) : void{
         $request = $this->requests[$requestId] ?? null;
         $receiverUuid = $receiver->getUniqueId()->toString();
+        if($this->quarantineStore->isUnsafe()){
+            $this->cancelSessionsForSafetyMode();
+            $this->messages->send($receiver, 'trade-system-disabled');
+            return;
+        }
+        if($this->quarantineStore->contains($receiverUuid)){
+            $this->messages->send($receiver, 'trade-quarantined');
+            return;
+        }
         if($request === null || $request->receiverUuid !== $receiverUuid){
             $this->messages->send($receiver, 'request-none', ['player' => $request?->senderName ?? 'unknown']);
+            return;
+        }
+        if($this->quarantineStore->contains($request->senderUuid)){
+            $this->removeRequest($request);
+            $this->messages->send($receiver, 'player-quarantined', ['player' => $request->senderName]);
             return;
         }
         if($request->isExpired(time())){
@@ -416,6 +462,8 @@ final class TradeManager{
         $session->cancel();
         $this->finishSession($session);
         if(!$result->rollbackSuccessful || str_starts_with($result->reason, 'rollback-failed')){
+            $this->quarantinePlayer($session->partyOneUuid);
+            $this->quarantinePlayer($session->partyTwoUuid);
             $this->plugin->getLogger()->critical('Trade rollback failure for session ' . $sessionId . ': ' . $result->reason);
             $this->messages->send($partyOne, 'trade-rollback-critical');
             $this->messages->send($partyTwo, 'trade-rollback-critical');
@@ -458,6 +506,13 @@ final class TradeManager{
 
     public function getSessionFor(Player $player, string $sessionId) : ?TradeSession{
         $uuid = $player->getUniqueId()->toString();
+        if($this->quarantineStore->isUnsafe()){
+            $this->cancelSessionsForSafetyMode();
+            return null;
+        }
+        if($this->quarantineStore->contains($uuid)){
+            return null;
+        }
         if(($this->activeByPlayer[$uuid] ?? null) !== $sessionId){
             return null;
         }
@@ -516,6 +571,10 @@ final class TradeManager{
     }
 
     public function tick() : void{
+        if($this->quarantineStore->isUnsafe()){
+            $this->cancelSessionsForSafetyMode();
+            return;
+        }
         $this->pruneExpiredRequests();
         $this->pruneRateLimits();
         $now = time();
@@ -547,6 +606,18 @@ final class TradeManager{
     private function startSession(Player $partyOne, Player $partyTwo) : void{
         $uuidOne = $partyOne->getUniqueId()->toString();
         $uuidTwo = $partyTwo->getUniqueId()->toString();
+        if($this->quarantineStore->isUnsafe()){
+            $this->messages->send($partyOne, 'trade-system-disabled');
+            return;
+        }
+        if($this->quarantineStore->contains($uuidOne)){
+            $this->messages->send($partyOne, 'trade-quarantined');
+            return;
+        }
+        if($this->quarantineStore->contains($uuidTwo)){
+            $this->messages->send($partyOne, 'player-quarantined', ['player' => $partyTwo->getName()]);
+            return;
+        }
         if($uuidOne === $uuidTwo || isset($this->activeByPlayer[$uuidOne]) || isset($this->activeByPlayer[$uuidTwo])){
             $this->messages->send($partyOne, 'player-busy', ['player' => $partyTwo->getName()]);
             return;
@@ -611,6 +682,41 @@ final class TradeManager{
         if(($this->activeByPlayer[$session->partyTwoUuid] ?? null) === $session->id){
             unset($this->activeByPlayer[$session->partyTwoUuid]);
         }
+    }
+
+    private function quarantinePlayer(string $uuid) : void{
+        if(!$this->quarantineStore->quarantine($uuid, 'inventory-rollback-failed')){
+            $this->plugin->getLogger()->critical('Trade quarantine could not be persisted; all trading is now fail-closed.');
+        }
+        foreach(array_values($this->requests) as $request){
+            if($request->senderUuid !== $uuid && $request->receiverUuid !== $uuid){
+                continue;
+            }
+            $otherUuid = $request->senderUuid === $uuid ? $request->receiverUuid : $request->senderUuid;
+            $other = $this->findOnlinePlayerByUuid($otherUuid);
+            if($other !== null){
+                $this->messages->send($other, 'request-expired');
+            }
+            $this->removeRequest($request);
+        }
+    }
+
+    private function cancelSessionsForSafetyMode() : void{
+        foreach(array_values($this->sessions) as $session){
+            if(!$session->cancel()){
+                continue;
+            }
+            $this->finishSession($session);
+            foreach([$session->partyOneUuid, $session->partyTwoUuid] as $uuid){
+                $player = $this->findOnlinePlayerByUuid($uuid);
+                if($player !== null){
+                    $this->messages->send($player, 'trade-system-disabled');
+                }
+            }
+            $this->audit('CANCELLED_SAFETY_MODE', $session, 'quarantine store unsafe');
+        }
+        $this->requests = [];
+        $this->requestByPair = [];
     }
 
     private function pruneRateLimits() : void{

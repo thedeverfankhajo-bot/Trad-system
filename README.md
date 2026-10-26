@@ -13,6 +13,7 @@ A dependency-free player-to-player **item trading** plugin for PocketMine-MP API
 - Item names shown in trade forms are sanitized against formatting, line-break, and bidirectional-text spoofing; message placeholders are interpolated in one pass.
 - Both target inventories are simulated after outgoing items are removed, so those newly freed slots are considered before capacity rejection.
 - Synchronous main-thread commit, pre-commit inventory snapshots, post-commit verification, rollback attempts, stale-form/session validation, and idempotent cleanup.
+- Persistent UUID quarantine after a failed inventory rollback; unreadable, malformed, or unwritable quarantine storage disables all trading rather than failing open.
 - Configurable messages and optional sound effects; concise audit records omit NBT.
 - GitHub Actions checks project syntax, smoke tests, Composer metadata, and YAML parseability.
 
@@ -90,6 +91,8 @@ Before final commit, offered items remain where they were and are not escrowed o
 - No offer can be double-booked through multiple entries for the same source slot.
 - A temporary `SimpleInventory` is used only for capacity simulation; it never holds players' trade items.
 - Snapshot rollback is best-effort protection for an in-process failure. Updates across two separate inventories are not crash-atomic if the PHP process or host terminates abruptly between updates. A durable write-ahead journal and recovery protocol would be needed to cover that stronger failure model.
+- If rollback verification fails, both participants are persisted in `plugin_data/TradeSystem/trade-quarantine.json` and cannot trade again until an administrator has reconciled their inventories. If the quarantine file cannot be trusted or saved, all trading is disabled for safety.
+- **Recovery procedure:** stop the server, inspect the critical log and both players' saved inventories, manually reconcile any discrepancy from trusted backups, then remove only the repaired players' UUID entries from `trade-quarantine.json` and restart. Do not clear quarantine merely to restore access without checking item conservation.
 - This repository has automated domain/state smoke tests but does not claim to have run a live PMMP server integration test. Follow `tests/README.md` before production rollout.
 
 ## Build, lint, and tests
@@ -117,7 +120,7 @@ src/TradSystem/
   config/TradeConfig.php
   form/                         # Dependency-free Simple/Custom form implementations and screens
   listener/PlayerListener.php
-  trade/                        # Requests, state machine, manager, and transaction executor
+  trade/                        # Requests, state machine, manager, transaction executor, quarantine store
   util/ItemFingerprint.php
   util/Messages.php
 tests/

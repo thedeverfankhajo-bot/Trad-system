@@ -2,7 +2,7 @@
 
 ## Automated checks in this repository
 
-- `php tests/run.php`: smoke tests for request expiration, participant authorization, state transitions, two-party confirmation, duplicate commit prevention, confirmation reset, safe one-pass message interpolation, item display-name sanitization, and required project files/configuration.
+- `php tests/run.php`: smoke tests for request expiration, participant authorization, state transitions, two-party confirmation, duplicate commit prevention, confirmation reset, safe one-pass message interpolation, item display-name sanitization, persistent rollback quarantine, corrupt-store fail-closed behavior, and required project files/configuration.
 - `composer lint`: PHP syntax validation for every source and test file.
 - GitHub Actions: Composer manifest validation, PHP syntax checks, smoke tests, and YAML parsing of the manifest and resources.
 
@@ -36,4 +36,4 @@ Run the following against a disposable API 5 server with two test accounts and r
 
 ## Deployment safety note
 
-The executor validates both inventories, simulates capacity after outgoing removals, applies the plan synchronously, and restores snapshots if application throws or post-application verification fails. No user-space plugin can make updates to two distinct player inventories durable and crash-atomic across an abrupt process termination without an additional persistent transaction journal and recovery protocol. Test this plugin on a staging server before production use and keep regular server backups.
+The executor validates both inventories, simulates capacity after outgoing removals, applies the plan synchronously, and restores snapshots if application throws or post-application verification fails. If rollback cannot be verified, both player UUIDs are persisted in `plugin_data/TradeSystem/trade-quarantine.json`; malformed/unreadable/unwritable quarantine data fail-closes the whole trading system. Recovery requires stopping the server, reconciling inventories from trusted state, removing only resolved UUID entries, and restarting. No user-space plugin can make updates to two distinct player inventories durable and crash-atomic across an abrupt process termination without an additional persistent transaction journal and recovery protocol. Test this plugin on a staging server before production use and keep regular server backups.

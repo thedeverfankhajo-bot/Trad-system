@@ -5,12 +5,14 @@ declare(strict_types=1);
 use TradSystem\trade\TradeRequest;
 use TradSystem\trade\TradeSession;
 use TradSystem\trade\TradeState;
+use TradSystem\trade\TradeQuarantineStore;
 use TradSystem\util\ItemDisplayName;
 use TradSystem\util\MessageFormatter;
 
 require __DIR__ . '/../src/TradSystem/trade/TradeState.php';
 require __DIR__ . '/../src/TradSystem/trade/TradeSession.php';
 require __DIR__ . '/../src/TradSystem/trade/TradeRequest.php';
+require __DIR__ . '/../src/TradSystem/trade/TradeQuarantineStore.php';
 require __DIR__ . '/../src/TradSystem/util/MessageFormatter.php';
 require __DIR__ . '/../src/TradSystem/util/ItemDisplayName.php';
 
@@ -69,6 +71,29 @@ $assert($request->senderUuid === 'uuid-a' && $request->receiverUuid === 'uuid-b'
 $assert($request->isExpired(99) === false, 'A request is valid before its expiry timestamp.');
 $assert($request->isExpired(100) === true, 'A request expires at its expiry timestamp.');
 $assert(strlen($request->id) === 32, 'Request IDs use a 128-bit random hexadecimal token.');
+
+$quarantinePath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'tradesystem-quarantine-' . bin2hex(random_bytes(8)) . '.json';
+$quarantineErrors = [];
+$onQuarantineError = static function(string $message) use (&$quarantineErrors) : void{
+    $quarantineErrors[] = $message;
+};
+$quarantineStore = new TradeQuarantineStore($quarantinePath, $onQuarantineError);
+$assert(!$quarantineStore->isUnsafe(), 'A missing quarantine file is a safe empty starting state.');
+$assert($quarantineStore->quarantine('uuid-a', 'inventory-rollback-failed') === true, 'A rollback failure is persisted to the quarantine file.');
+$assert($quarantineStore->contains('uuid-a'), 'A quarantined UUID is blocked in the current process.');
+$reloadedQuarantine = new TradeQuarantineStore($quarantinePath, $onQuarantineError);
+$assert(!$reloadedQuarantine->isUnsafe() && $reloadedQuarantine->contains('uuid-a'), 'Quarantine survives reconstruction across plugin restarts.');
+$assert(is_file($quarantinePath), 'The quarantine store is written to disk.');
+@unlink($quarantinePath);
+
+$corruptQuarantinePath = $quarantinePath . '.corrupt';
+file_put_contents($corruptQuarantinePath, '{ invalid JSON');
+$corruptQuarantine = new TradeQuarantineStore($corruptQuarantinePath, $onQuarantineError);
+$assert($corruptQuarantine->isUnsafe(), 'Corrupt quarantine data activates fail-closed mode.');
+$assert($corruptQuarantine->quarantine('uuid-b', 'inventory-rollback-failed') === false, 'An unsafe quarantine store refuses to claim that a new quarantine is persisted.');
+$assert($quarantineErrors !== [], 'Quarantine persistence failures are reported through the supplied logger callback.');
+@unlink($corruptQuarantinePath);
+@unlink($corruptQuarantinePath . '.tmp');
 
 $root = dirname(__DIR__);
 $requiredFiles = [
