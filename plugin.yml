@@ -1,0 +1,17 @@
+name: TradeSystem
+main: TradSystem\Main
+version: 1.0.0
+api: [5.0.0]
+authors: [thedeverfankhajo-bot]
+description: Secure, confirmation-based player-to-player item trading for PocketMine-MP API 5.
+website: https://github.com/thedeverfankhajo-bot/Trad-system
+commands:
+  trade:
+    description: Open the TradeSystem menu or manage player trade requests.
+    usage: "/trade [player|accept <player>|deny <player>|cancel|help]"
+    permission: tradesystem.command.trade
+    aliases: [trades]
+permissions:
+  tradesystem.command.trade:
+    description: Allows players to use the player trading system.
+    default: true

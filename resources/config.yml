@@ -1,0 +1,13 @@
+# All timeouts are in seconds. Invalid values fall back to safe defaults.
+request-timeout-seconds: 60
+trade-timeout-seconds: 300
+max-offer-slots: 8
+max-items-per-offer: 64
+# Maximum new trade requests a player may send in any rolling 60-second window.
+max-trades-per-minute: 8
+cooldown-seconds: 3
+# Self-trading is intentionally hard-disabled to preserve transaction invariants.
+allow-self-trade: false
+messages-prefix: "§8[§bTradeSystem§8] §r"
+sound-effects: false
+enable-audit-log: true
