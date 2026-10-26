@@ -431,12 +431,21 @@ final class TradeManager{
         try{
             $result = $this->executor->commit($session, $partyOne, $partyTwo);
         }catch(Throwable $exception){
-            $this->plugin->getLogger()->error('Unexpected trade executor exception; cancelling session ' . $sessionId . ': ' . $exception->getMessage());
+            // The executor normally catches and verifies failures during apply/rollback.
+            // If an exception escapes that recovery boundary, the final inventory state
+            // cannot be proven here; fail closed instead of assuming it was rolled back.
+            $exceptionClass = get_class($exception);
+            $this->plugin->getLogger()->critical(
+                'Trade executor exception escaped its recovery boundary for session ' . $sessionId .
+                ' (' . $exceptionClass . '); inventory outcome is unknown. Both participants are quarantined.'
+            );
             $session->cancel();
             $this->finishSession($session);
-            $this->messages->send($partyOne, 'trade-commit-failed');
-            $this->messages->send($partyTwo, 'trade-commit-failed');
-            $this->audit('FAILED', $session, 'unexpected executor exception');
+            $this->quarantinePlayer($session->partyOneUuid);
+            $this->quarantinePlayer($session->partyTwoUuid);
+            $this->messages->send($partyOne, 'trade-rollback-critical');
+            $this->messages->send($partyTwo, 'trade-rollback-critical');
+            $this->audit('CRITICAL_EXECUTOR_EXCEPTION', $session, 'inventory outcome unknown; exception=' . $exceptionClass);
             return;
         }
 

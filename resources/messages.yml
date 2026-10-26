@@ -32,7 +32,7 @@ trade-partner-confirmed: "%player% has confirmed. Review the offers and confirm 
 trade-inventory-changed: "An offered item changed after it was selected. Review or remove the affected offer; nobody's items were transferred."
 trade-no-space: "At least one inventory cannot fit the incoming items. Change the offers and confirm again."
 trade-commit-failed: "The transfer failed and the previous inventories were restored. The session was cancelled for safety."
-trade-rollback-critical: "A critical error occurred while restoring an inventory. Contact an administrator and do not continue trading."
+trade-rollback-critical: "A critical trade transaction error occurred; inventory state could not be fully verified. Trading is locked for safety. Contact an administrator and do not continue trading."
 trade-quarantined: "Your trading access is locked after an inventory rollback failure. Contact an administrator to reconcile your inventory."
 player-quarantined: "%player% is blocked from trading after an inventory safety failure."
 trade-system-disabled: "Trading is disabled because quarantine data could not be trusted or saved. Contact an administrator."

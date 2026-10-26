@@ -142,6 +142,13 @@ $manifest = (string) file_get_contents($root . '/plugin.yml');
 $assert(str_contains($manifest, 'name: TradeSystem'), 'plugin.yml declares the plugin name.');
 $assert(str_contains($manifest, 'main: TradSystem\\Main'), 'plugin.yml points to the Main class.');
 $managerSource = (string) file_get_contents($root . '/src/TradSystem/trade/TradeManager.php');
+$assert(
+    str_contains($managerSource, 'CRITICAL_EXECUTOR_EXCEPTION') &&
+    str_contains($managerSource, 'inventory outcome is unknown') &&
+    str_contains($managerSource, '$this->quarantinePlayer($session->partyOneUuid)') &&
+    str_contains($managerSource, '$this->quarantinePlayer($session->partyTwoUuid)'),
+    'An exception escaping executor recovery must quarantine both participants because inventory state is unknown.'
+);
 $amountFormSource = (string) file_get_contents($root . '/src/TradSystem/form/OfferAmountForm.php');
 $assert(str_contains($managerSource, 'int $expectedRevision') && str_contains($amountFormSource, '$expectedRevision'), 'Quantity-form callbacks are bound to the trade-offer revision.');
 $selectionSource = (string) file_get_contents($root . '/src/TradSystem/form/PlayerSelectionForm.php');
