@@ -40,7 +40,7 @@ jobs:
             manifest = YAML.load_file("plugin.yml", aliases: true)
             abort "plugin.yml must be a mapping" unless manifest.is_a?(Hash)
             abort "Unexpected plugin name" unless manifest["name"] == "TradeSystem"
-            abort "Unexpected Main class" unless manifest["main"] == ["TradSystem", "Main"].join("\\\\")
+            abort "Unexpected Main class" unless manifest["main"] == ["TradSystem", "Main"].join(92.chr)
             abort "PocketMine-MP API 5 is required" unless Array(manifest["api"]).map(&:to_s).include?("5.0.0")
             permission = "tradesystem.command.trade"
             abort "The trade command must declare its permission" unless manifest.dig("commands", "trade", "permission") == permission
