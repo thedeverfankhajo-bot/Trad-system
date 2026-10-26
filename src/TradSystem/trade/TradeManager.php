@@ -690,12 +690,9 @@ final class TradeManager{
 
     private function quarantinePlayer(string $uuid) : void{
         if(!$this->quarantineStore->quarantine($uuid, 'inventory-rollback-failed')){
+            // TradeQuarantineStore persists a separate safety marker when possible.
+            // Its error callback stops the server only if that marker also fails.
             $this->plugin->getLogger()->critical('Trade quarantine could not be persisted; all trading is now fail-closed.');
-            if($this->quarantineStore->isUnsafe()){
-                // If the data directory cannot persist either the quarantine or
-                // its independent lock marker, continuing the server is unsafe.
-                $this->plugin->getServer()->shutdown();
-            }
         }
         foreach(array_values($this->requests) as $request){
             if($request->senderUuid !== $uuid && $request->receiverUuid !== $uuid){
