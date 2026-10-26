@@ -52,7 +52,11 @@ final class TradeExecutor{
         }catch(Throwable $exception){
             $restoredOne = $this->restore($inventoryOne, $beforeOne);
             $restoredTwo = $this->restore($inventoryTwo, $beforeTwo);
-            if(!$restoredOne || !$restoredTwo){
+            // Restoring the second inventory may fire listeners that mutate the first.
+            // Verify both snapshots again after both recovery operations have finished.
+            $finalOneMatches = $this->contentsMatchSafely($inventoryOne, $beforeOne);
+            $finalTwoMatches = $this->contentsMatchSafely($inventoryTwo, $beforeTwo);
+            if(!$restoredOne || !$restoredTwo || !$finalOneMatches || !$finalTwoMatches){
                 return TradeResult::criticalFailure('rollback-failed: ' . $exception->getMessage());
             }
             return TradeResult::failure('apply-failed: ' . $exception->getMessage());

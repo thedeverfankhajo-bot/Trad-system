@@ -164,6 +164,12 @@ $assert(
 );
 $assert(str_contains($managerSource, 'ItemDisplayName::sanitize($offer->getItemName())'), 'Offer summaries sanitize item-controlled display names.');
 $assert(str_contains($executorSource, '$inventory->setContents($contents);'), 'Inventory plans are applied as a complete contents snapshot.');
+$assert(
+    strpos($executorSource, '$this->contentsMatchSafely($inventoryOne, $beforeOne);') !== false &&
+    strpos($executorSource, '$this->contentsMatchSafely($inventoryTwo, $beforeTwo);') !== false &&
+    strpos($executorSource, '$this->contentsMatchSafely($inventoryOne, $beforeOne);') > strpos($executorSource, '$restoredTwo = $this->restore($inventoryTwo, $beforeTwo);'),
+    'Rollback revalidates both inventories after both restoration operations so cross-inventory listener effects cannot pass unnoticed.'
+);
 $config = (string) file_get_contents($root . '/resources/config.yml');
 foreach(['request-timeout-seconds', 'trade-timeout-seconds', 'max-offer-slots', 'max-items-per-offer', 'max-trades-per-minute', 'cooldown-seconds', 'allow-self-trade', 'messages-prefix', 'sound-effects', 'enable-audit-log'] as $key){
     $assert(str_contains($config, $key . ':'), 'config.yml contains required setting ' . $key . '.');
