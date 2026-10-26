@@ -41,7 +41,7 @@ final class TradeConfig{
     }
 
     /** @param array<string, mixed> $values */
-    private static function boundedInt(array $values, string $key, int $default, int $minimum, int $maximum, Logger $logger) : int{
+    private static function boundedInt(array $values, string $key, int $default, int $minimum, int $maximum, \AttachableLogger $logger) : int{
         $value = $values[$key] ?? $default;
         if(!is_int($value) || $value < $minimum || $value > $maximum){
             $logger->warning("Invalid '$key'; expected an integer from $minimum to $maximum. Using $default.");
@@ -51,7 +51,7 @@ final class TradeConfig{
     }
 
     /** @param array<string, mixed> $values */
-    private static function boolValue(array $values, string $key, bool $default, Logger $logger) : bool{
+    private static function boolValue(array $values, string $key, bool $default, \AttachableLogger $logger) : bool{
         $value = $values[$key] ?? $default;
         if(!is_bool($value)){
             $logger->warning("Invalid '$key'; expected true or false. Using " . ($default ? 'true' : 'false') . '.');

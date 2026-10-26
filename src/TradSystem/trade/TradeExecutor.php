@@ -144,9 +144,6 @@ final class TradeExecutor{
 
         if(!$this->contentsMatchSafely($inventory, $contents)){
             foreach($contents as $slot => $item){
-                if(!$item instanceof Item){
-                    continue;
-                }
                 try{
                     $inventory->setItem($slot, clone $item);
                 }catch(Throwable){
