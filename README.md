@@ -2,6 +2,20 @@
 
 A dependency-free player-to-player **item trading** plugin for PocketMine-MP API 5 / Minecraft Bedrock. It uses the public `pocketmine\form\Form` interface and `Player::sendForm()` rather than requiring a separate FormAPI plugin.
 
+[![Tests](https://github.com/thedeverfankhajo-bot/Trad-system/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/thedeverfankhajo-bot/Trad-system/actions/workflows/tests.yml) [![Latest release](https://img.shields.io/github/v/release/thedeverfankhajo-bot/Trad-system?display_name=tag)](https://github.com/thedeverfankhajo-bot/Trad-system/releases)
+
+## Download and install
+
+**Recommended:** download [`TradeSystem.phar`](https://github.com/thedeverfankhajo-bot/Trad-system/releases/latest/download/TradeSystem.phar) and its [`SHA-256 checksum`](https://github.com/thedeverfankhajo-bot/Trad-system/releases/latest/download/TradeSystem.phar.sha256) from [GitHub Releases](https://github.com/thedeverfankhajo-bot/Trad-system/releases). The direct-download links become available after the first release is published.
+
+1. Download both files from the same release.
+2. Verify the PHAR from the directory containing both files with `sha256sum --check TradeSystem.phar.sha256` (Linux/macOS). On Windows, compare the output of `Get-FileHash .\TradeSystem.phar -Algorithm SHA256` with the checksum file.
+3. Copy `TradeSystem.phar` into the PocketMine-MP server's `plugins/` directory.
+4. Restart the server and use `/trade` in-game.
+5. Test on a staging server before enabling trading on a production server.
+
+If no release is published yet, open the [Publish PHAR release workflow](https://github.com/thedeverfankhajo-bot/Trad-system/actions/workflows/release.yml), choose **Run workflow** on `main`, and enter the version in `plugin.yml` with a `v` prefix (currently `v1.1.0`). The workflow validates the source, builds the PHAR, calculates its checksum, and publishes both assets.
+
 ## Features
 
 - `/trade` opens the Bedrock UI; `/trade <player>` sends a request.
@@ -24,15 +38,15 @@ A dependency-free player-to-player **item trading** plugin for PocketMine-MP API
 - No mandatory third-party plugin or runtime Composer package.
 - To load the source folder directly, install DevTools on a test server. For distribution, package the plugin as a PHAR using the standard PMMP/DevTools workflow.
 
-## Installation
+## Source installation for development
 
-1. Download or clone this repository.
-2. For a development server with DevTools enabled, place the project folder in `plugins/` so that `plugins/Trad-system/plugin.yml` is present.
+1. Clone this repository.
+2. On a development server with DevTools enabled, place the project folder in `plugins/` so `plugins/Trad-system/plugin.yml` is present.
 3. Start or restart PocketMine-MP.
 4. Review `plugin_data/TradeSystem/config.yml` and `plugin_data/TradeSystem/messages.yml`.
 5. Test trades on a staging server before allowing real player trading.
 
-For a PHAR release, package the contents of this project with a PMMP-compatible packaging tool and put `TradeSystem.phar` in the server's `plugins/` directory.
+For normal server installation, use the packaged `TradeSystem.phar` from the [Releases page](https://github.com/thedeverfankhajo-bot/Trad-system/releases) instead of building from source.
 
 ## Commands
 
