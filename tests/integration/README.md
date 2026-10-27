@@ -32,6 +32,7 @@ Start the test server and verify that both plugins load without errors. The comm
 3. Run `/tradeint stale-count <other-player>`. The harness records a 3-diamond source snapshot, then changes the offered stack count before executing the commit. The executor must return `inventory-changed` and leave both commit-baseline inventories unchanged.
 4. Run `/tradeint stale-meta <other-player>`. The harness records the source snapshot, then changes the diamond's custom name before executing the commit. The executor must return `inventory-changed` and leave both commit-baseline inventories unchanged.
 5. Run `/tradeint stale-type <other-player>`. The harness records the offered diamonds, replaces the source slot with three gold ingots before commit, and expects `inventory-changed` with both commit-baseline inventories unchanged.
+6. Run `/tradeint stale-slot <other-player>`. The harness records an offer from slot 0, moves that stack to slot 1 before commit, and expects `inventory-changed` without any additional changes to either commit-baseline inventory.
 
 After an expected result, the harness restores both initially empty inventories and now re-verifies both snapshots after both restoration operations. This last check catches inventory listeners that mutate the first player while the second inventory is restored.
 

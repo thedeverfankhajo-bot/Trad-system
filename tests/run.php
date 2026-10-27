@@ -212,12 +212,14 @@ $assert(
 );
 $integrationHarnessSource = (string) file_get_contents($root . '/tests/integration/src/TradeSystemIntegrationHarness/Main.php');
 $assert(
-    str_contains($integrationHarnessSource, '["success", "capacity", "stale-count", "stale-meta", "stale-type"]') &&
+    str_contains($integrationHarnessSource, '["success", "capacity", "stale-count", "stale-meta", "stale-type", "stale-slot"]') &&
     str_contains($integrationHarnessSource, '$changed->setCount(4)') &&
     str_contains($integrationHarnessSource, '$changed->setCustomName("Changed after offer")') &&
     str_contains($integrationHarnessSource, '$changed = VanillaItems::GOLD_INGOT();') &&
+    str_contains($integrationHarnessSource, '$firstInventory->clear(0);') &&
+    str_contains($integrationHarnessSource, '$firstInventory->setItem(1, $changed);') &&
     str_contains($integrationHarnessSource, '$result->reason === "inventory-changed"'),
-    'Integration harness includes real inventory checks for stale source counts, metadata, and item types.'
+    'Integration harness covers stale count, metadata, item type, and source-slot movement in live inventory scenarios.'
 );
 $integrationRestoreSecond = strpos($integrationHarnessSource, '$restoredSecond = $this->restore($secondInventory, $beforeSecond);');
 $integrationFinalFirst = strpos($integrationHarnessSource, '$finalFirstMatches = $this->matchesSnapshot($firstInventory, $beforeFirst);');

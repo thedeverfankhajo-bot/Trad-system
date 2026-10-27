@@ -38,8 +38,8 @@ final class Main extends PluginBase{
             $sender->sendMessage("Run this command in-game as the first disposable test player.");
             return true;
         }
-        if(count($args) !== 2 || !in_array(strtolower($args[0]), ["success", "capacity", "stale-count", "stale-meta", "stale-type"], true)){
-            $sender->sendMessage("Usage: /tradeint <success|capacity|stale-count|stale-meta|stale-type> <other-player>");
+        if(count($args) !== 2 || !in_array(strtolower($args[0]), ["success", "capacity", "stale-count", "stale-meta", "stale-type", "stale-slot"], true)){
+            $sender->sendMessage("Usage: /tradeint <success|capacity|stale-count|stale-meta|stale-type|stale-slot> <other-player>");
             return true;
         }
 
@@ -117,6 +117,10 @@ final class Main extends PluginBase{
                 $changed = VanillaItems::GOLD_INGOT();
                 $changed->setCount(3);
                 $firstInventory->setItem(0, $changed);
+            }elseif($scenario === "stale-slot"){
+                $changed = clone $firstInventory->getItem(0);
+                $firstInventory->clear(0);
+                $firstInventory->setItem(1, $changed);
             }
             $commitBaselineFirst = $this->snapshot($firstInventory);
             $commitBaselineSecond = $this->snapshot($secondInventory);
@@ -146,7 +150,8 @@ final class Main extends PluginBase{
                 $expectation = match($scenario){
                     "stale-count" => "source stack count changes after offering reject the trade without further inventory mutations",
                     "stale-meta" => "source metadata changes after offering reject the trade without further inventory mutations",
-                    default => "source item type changes after offering reject the trade without further inventory mutations"
+                    "stale-type" => "source item type changes after offering reject the trade without further inventory mutations",
+                    default => "moving an offered stack to another slot after offering rejects the trade without further inventory mutations"
                 };
             }
 
