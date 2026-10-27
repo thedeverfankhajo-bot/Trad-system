@@ -60,11 +60,22 @@ final class TradeManager{
         return $this->messages;
     }
 
+    /** Stale form callbacks must not reopen UI or schedule new work during shutdown. */
+    public function isShuttingDown() : bool{
+        return $this->shuttingDown;
+    }
+
     public function openMainForm(Player $player) : void{
+        if($this->shuttingDown){
+            return;
+        }
         MainForm::send($this, $player);
     }
 
     public function openPlayerSelectionForm(Player $player) : void{
+        if($this->shuttingDown){
+            return;
+        }
         $uuid = $player->getUniqueId()->toString();
         if($this->quarantineStore->isUnsafe()){
             $this->messages->send($player, 'trade-system-disabled');
@@ -78,10 +89,16 @@ final class TradeManager{
     }
 
     public function openIncomingRequestsForm(Player $player) : void{
+        if($this->shuttingDown){
+            return;
+        }
         IncomingRequestsForm::send($this, $player);
     }
 
     public function openTradeOfferForm(Player $player, ?string $sessionId = null) : void{
+        if($this->shuttingDown){
+            return;
+        }
         $sessionId ??= $this->activeByPlayer[$player->getUniqueId()->toString()] ?? null;
         if($sessionId === null){
             $this->messages->send($player, 'trade-no-active');
@@ -91,10 +108,16 @@ final class TradeManager{
     }
 
     public function openSlotSelectionForm(Player $player, string $sessionId) : void{
+        if($this->shuttingDown){
+            return;
+        }
         SlotSelectionForm::send($this, $player, $sessionId);
     }
 
     public function openOfferAmountForm(Player $player, string $sessionId, int $slot, ?Item $expectedSnapshot = null) : void{
+        if($this->shuttingDown){
+            return;
+        }
         $session = $this->getSessionFor($player, $sessionId);
         $inventory = $player->getInventory();
         if($session === null || !$inventory->slotExists($slot)){
@@ -119,15 +142,24 @@ final class TradeManager{
     }
 
     public function openRemoveOfferForm(Player $player, string $sessionId) : void{
+        if($this->shuttingDown){
+            return;
+        }
         RemoveOfferForm::send($this, $player, $sessionId);
     }
 
     public function openConfirmationForm(Player $player, string $sessionId) : void{
+        if($this->shuttingDown){
+            return;
+        }
         TradeConfirmationForm::send($this, $player, $sessionId);
     }
 
     /** @return list<TradeRequest> */
     public function getIncomingRequestsFor(Player $player) : array{
+        if($this->shuttingDown){
+            return [];
+        }
         $this->pruneExpiredRequests();
         $uuid = $player->getUniqueId()->toString();
         $incoming = [];
@@ -162,6 +194,9 @@ final class TradeManager{
     }
 
     public function sendRequest(Player $sender, string $targetName) : void{
+        if($this->shuttingDown){
+            return;
+        }
         $target = $this->findOnlinePlayer($targetName);
         if($target === null){
             $this->messages->send($sender, 'player-not-found', ['player' => $targetName]);
@@ -175,6 +210,9 @@ final class TradeManager{
      * The subsequent request creation remains synchronous on PMMP's main thread.
      */
     public function sendRequestToUuid(Player $sender, string $targetUuid) : void{
+        if($this->shuttingDown){
+            return;
+        }
         $target = $this->findOnlinePlayerByUuid($targetUuid);
         if($target === null){
             $this->messages->send($sender, 'player-not-found', ['player' => $targetUuid]);
@@ -268,6 +306,9 @@ final class TradeManager{
     }
 
     public function acceptRequestByName(Player $receiver, string $senderName) : void{
+        if($this->shuttingDown){
+            return;
+        }
         foreach($this->getIncomingRequestsFor($receiver) as $request){
             if(strcasecmp($request->senderName, $senderName) === 0){
                 $this->acceptRequestById($receiver, $request->id);
@@ -278,6 +319,9 @@ final class TradeManager{
     }
 
     public function denyRequestByName(Player $receiver, string $senderName) : void{
+        if($this->shuttingDown){
+            return;
+        }
         foreach($this->getIncomingRequestsFor($receiver) as $request){
             if(strcasecmp($request->senderName, $senderName) === 0){
                 $this->denyRequestById($receiver, $request->id);
@@ -288,6 +332,9 @@ final class TradeManager{
     }
 
     public function acceptRequestById(Player $receiver, string $requestId) : void{
+        if($this->shuttingDown){
+            return;
+        }
         $request = $this->requests[$requestId] ?? null;
         $receiverUuid = $receiver->getUniqueId()->toString();
         if($this->quarantineStore->isUnsafe()){
@@ -330,6 +377,9 @@ final class TradeManager{
     }
 
     public function denyRequestById(Player $receiver, string $requestId) : void{
+        if($this->shuttingDown){
+            return;
+        }
         $request = $this->requests[$requestId] ?? null;
         $receiverUuid = $receiver->getUniqueId()->toString();
         if($request === null || $request->receiverUuid !== $receiverUuid){
@@ -345,6 +395,9 @@ final class TradeManager{
     }
 
     public function setOffer(Player $player, string $sessionId, int $slot, int $amount, Item $formSnapshot, int $expectedRevision) : void{
+        if($this->shuttingDown){
+            return;
+        }
         $session = $this->getSessionFor($player, $sessionId);
         $uuid = $player->getUniqueId()->toString();
         $inventory = $player->getInventory();
@@ -379,6 +432,9 @@ final class TradeManager{
     }
 
     public function removeOffer(Player $player, string $sessionId, int $slot, int $expectedRevision) : void{
+        if($this->shuttingDown){
+            return;
+        }
         $session = $this->getSessionFor($player, $sessionId);
         if($session === null || $session->getRevision() !== $expectedRevision || !$session->removeOffer($player->getUniqueId()->toString(), $slot)){
             $this->messages->send($player, 'trade-offer-invalid');
@@ -393,7 +449,10 @@ final class TradeManager{
         $this->refreshTradeForms($session);
     }
 
-    public function confirmTrade(Player $player, string $sessionId, int $expectedRevision) : void{
+    public function cancelTrade(Player $player, string $sessionId) : void{
+        if($this->shuttingDown){
+            return;
+        }
         $session = $this->getSessionFor($player, $sessionId);
         $uuid = $player->getUniqueId()->toString();
         if($session === null || $session->getRevision() !== $expectedRevision){
@@ -516,6 +575,8 @@ final class TradeManager{
     }
 
     public function cancelTrade(Player $player, string $sessionId) : void{
+            return;
+        }
         $session = $this->getSessionFor($player, $sessionId);
         if($session === null){
             $this->messages->send($player, 'trade-no-active');
@@ -535,6 +596,9 @@ final class TradeManager{
     }
 
     public function cancelActiveTrade(Player $player) : void{
+        if($this->shuttingDown){
+            return;
+        }
         $id = $this->activeByPlayer[$player->getUniqueId()->toString()] ?? null;
         if($id === null){
             $this->messages->send($player, 'trade-no-active');

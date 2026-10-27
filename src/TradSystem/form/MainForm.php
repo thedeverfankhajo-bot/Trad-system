@@ -9,6 +9,9 @@ use TradSystem\trade\TradeManager;
 
 final class MainForm{
     public static function send(TradeManager $manager, Player $player) : void{
+        if($manager->isShuttingDown()){
+            return;
+        }
         $messages = $manager->getMessages();
         $incomingCount = count($manager->getIncomingRequestsFor($player));
         $buttons = [
