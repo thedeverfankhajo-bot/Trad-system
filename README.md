@@ -10,6 +10,8 @@ A dependency-free player-to-player **item trading** plugin for PocketMine-MP API
 
 **Recommended:** download [`TradeSystem.phar`](https://github.com/thedeverfankhajo-bot/Trad-system/releases/latest/download/TradeSystem.phar) and its [`SHA-256 checksum`](https://github.com/thedeverfankhajo-bot/Trad-system/releases/latest/download/TradeSystem.phar.sha256) from [GitHub Releases](https://github.com/thedeverfankhajo-bot/Trad-system/releases). The direct-download links work when the latest published release includes these assets.
 
+**Temporary build while the first release is pending:** download the [validated TradeSystem-PHAR artifact](https://github.com/thedeverfankhajo-bot/Trad-system/actions/runs/40510996369). The ZIP contains `TradeSystem.phar` and `TradeSystem.phar.sha256` and expires on **26 November 2026**.
+
 1. Download both files from the same release.
 2. Verify the PHAR from the directory containing both files with `sha256sum --check TradeSystem.phar.sha256` (Linux/macOS). On Windows, compare the output of `Get-FileHash .\TradeSystem.phar -Algorithm SHA256` with the checksum file.
 3. Copy `TradeSystem.phar` into the PocketMine-MP server's `plugins/` directory.
