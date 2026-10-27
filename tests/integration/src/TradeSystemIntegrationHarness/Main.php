@@ -14,11 +14,16 @@ use pocketmine\player\Player;
 use pocketmine\plugin\PluginBase;
 use Throwable;
 use TradSystem\trade\TradeExecutor;
+use TradSystem\trade\TradeJournalStore;
+use TradSystem\trade\TradePlayerDataSaver;
 use TradSystem\trade\TradeSession;
 
 final class Main extends PluginBase{
+    private TradePlayerDataSaver $dataSaver;
 
     protected function onEnable() : void{
+        $this->dataSaver = new TradePlayerDataSaver();
+        $this->getServer()->getPluginManager()->registerEvents($this->dataSaver, $this);
         $this->getLogger()->warning(
             "Integration harness enabled. Use only a disposable PMMP server and two disposable accounts; " .
             "both main inventories must be empty before each run."
@@ -128,7 +133,11 @@ final class Main extends PluginBase{
             // After entering the executor, an unexpected result must be preserved for diagnosis.
             // Only a verified expected outcome permits restoring the initially empty inventories.
             $safeToRestore = false;
-            $result = (new TradeExecutor())->commit($session, $sender, $partner);
+            $journalPath = $this->getDataFolder() . 'trade-journal-' . bin2hex(random_bytes(8)) . '.json';
+            $journalStore = new TradeJournalStore($journalPath, function(string $error) : void{
+                $this->getLogger()->critical($error);
+            });
+            $result = (new TradeExecutor($journalStore, $this->dataSaver))->commit($session, $sender, $partner);
             if($scenario === "success"){
                 $passed = $result->success
                     && $this->countType($firstInventory, VanillaItems::DIAMOND()->getTypeId()) === 1

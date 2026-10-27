@@ -13,7 +13,9 @@ use TradSystem\command\TradeCommand;
 use TradSystem\config\TradeConfig;
 use TradSystem\listener\PlayerListener;
 use TradSystem\trade\TradeExecutor;
+use TradSystem\trade\TradeJournalStore;
 use TradSystem\trade\TradeManager;
+use TradSystem\trade\TradePlayerDataSaver;
 use TradSystem\util\Messages;
 
 final class Main extends PluginBase{
@@ -24,17 +26,31 @@ final class Main extends PluginBase{
         $this->saveDefaultConfig();
         $this->saveResource('messages.yml');
         $validatedConfig = new TradeConfig($this->getConfig()->getAll(), $this->getLogger());
+        $journalStore = new TradeJournalStore(
+            $this->getDataFolder() . 'trade-journal.json',
+            function(string $message) : void{
+                $this->getLogger()->critical($message);
+                if(str_contains($message, 'persistent journal safety lock could not be written')){
+                    $this->getServer()->shutdown();
+                }
+            }
+        );
+        $dataSaver = new TradePlayerDataSaver();
         $this->tradeManager = new TradeManager(
             $this,
             $validatedConfig,
             new Messages(new Config($this->getDataFolder() . 'messages.yml', Config::YAML), $validatedConfig->messagesPrefix),
-            new TradeExecutor()
+            new TradeExecutor($journalStore, $dataSaver),
+            $journalStore,
+            $dataSaver
         );
         $this->tradeCommand = new TradeCommand($this->tradeManager, $this->tradeManager->getMessages());
+        $this->getServer()->getPluginManager()->registerEvents($dataSaver, $this);
         $this->getServer()->getPluginManager()->registerEvents(new PlayerListener($this->tradeManager), $this);
         $this->getScheduler()->scheduleRepeatingTask(new ClosureTask(function() : void{
             $this->tradeManager?->tick();
         }), 20);
+        $this->tradeManager->enforceRecoveryBarrier();
         $this->getLogger()->info('TradeSystem enabled. Trade items are kept in player inventories until final commit.');
     }
 

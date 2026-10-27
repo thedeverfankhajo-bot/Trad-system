@@ -79,3 +79,7 @@ ui-empty-offer: "(no items offered)"
 ui-offer-line: "Slot %slot%: %item% x%count%"
 ui-slot-line: "Slot %slot% — %item% x%count%"
 ui-remove-line: "Remove Slot %slot% — %item% x%count%"
+
+trade-recovery-pending: "Trading is temporarily disabled while an incomplete transaction is being recovered. Reconnect if your inventory was affected."
+trade-recovery-restored: "TradeSystem restored your inventory from a pending transaction journal."
+trade-journal-unavailable: "The transaction journal could not be prepared safely. No trade items were changed. Contact an administrator if this persists."

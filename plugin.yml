@@ -1,6 +1,6 @@
 name: TradeSystem
 main: TradSystem\Main
-version: 1.0.0
+version: 1.1.0
 api: [5.0.0]
 authors: [thedeverfankhajo-bot]
 description: Secure, confirmation-based player-to-player item trading for PocketMine-MP API 5.

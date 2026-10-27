@@ -43,7 +43,9 @@ final class TradeManager{
         private readonly Main $plugin,
         private readonly TradeConfig $config,
         private readonly Messages $messages,
-        private readonly TradeExecutor $executor
+        private readonly TradeExecutor $executor,
+        private readonly TradeJournalStore $journalStore,
+        private readonly TradePlayerDataSaver $dataSaver
     ){
         $this->quarantineStore = new TradeQuarantineStore(
             $this->plugin->getDataFolder() . 'trade-quarantine.json',
@@ -66,6 +68,95 @@ final class TradeManager{
         return $this->shuttingDown;
     }
 
+    public function isJournalBlocked() : bool{
+        return $this->journalStore->isUnsafe() || $this->journalStore->hasPendingTransaction();
+    }
+
+    private function sendJournalBlockedMessage(Player $player) : void{
+        $this->messages->send($player, $this->journalStore->isUnsafe() ? 'trade-system-disabled' : 'trade-recovery-pending');
+    }
+
+    public function enforceRecoveryBarrier() : void{
+        if($this->journalStore->isUnsafe()){
+            $this->plugin->getLogger()->critical('TradeSystem transaction journal is unsafe; stopping the server before allowing inventory interaction.');
+            $this->plugin->getServer()->shutdown();
+            return;
+        }
+        $record = $this->journalStore->getRecord();
+        if($record === null){
+            return;
+        }
+        foreach($this->plugin->getServer()->getOnlinePlayers() as $player){
+            $uuid = $player->getUniqueId()->toString();
+            if(
+                ($uuid === ($record['party_one'] ?? null) || $uuid === ($record['party_two'] ?? null)) &&
+                !$this->journalStore->isRecovered($uuid)
+            ){
+                $player->disconnect('TradeSystem must recover an unfinished transaction. Please reconnect.');
+            }
+        }
+    }
+
+    public function recoverJournalFor(Player $player) : void{
+        if($this->journalStore->isUnsafe()){
+            $player->disconnect('TradeSystem recovery state is unsafe. Contact the server administrator.');
+            $this->plugin->getServer()->shutdown();
+            return;
+        }
+        $record = $this->journalStore->getRecord();
+        if($record === null){
+            return;
+        }
+        $uuid = $player->getUniqueId()->toString();
+        if(!$this->journalStore->isParticipant($uuid)){
+            return;
+        }
+        if($this->journalStore->isRecovered($uuid)){
+            if($this->journalStore->bothParticipantsRecovered() && !$this->journalStore->clearIfBothRecovered()){
+                $this->plugin->getLogger()->critical('Both journal participants were saved, but the resolved journal could not be cleared. Trading remains locked and cleanup will be retried.');
+            }
+            return;
+        }
+
+        $sourceKey = ($record['state'] ?? null) === 'COMMITTED' ? 'after' : 'before';
+        $snapshot = $record[$sourceKey][$uuid] ?? null;
+        if(!is_array($snapshot)){
+            $this->plugin->getLogger()->critical('TradeSystem journal has no valid recovery snapshot for participant ' . $uuid . '.');
+            $player->disconnect('TradeSystem could not verify your inventory recovery. Contact the server administrator.');
+            $this->plugin->getServer()->shutdown();
+            return;
+        }
+
+        try{
+            $inventory = $player->getInventory();
+            $contents = \TradSystem\util\InventorySnapshotCodec::decode($snapshot, $inventory->getSize());
+            $inventory->setContents($contents);
+            if(!\TradSystem\util\InventorySnapshotCodec::matches($inventory, $snapshot)){
+                throw new \RuntimeException('Recovered inventory did not match the journal snapshot after application.');
+            }
+            if(!$this->dataSaver->save($player)){
+                throw new \RuntimeException('PocketMine-MP cancelled or could not confirm the player-data save event.');
+            }
+            if(!$this->journalStore->markRecovered($uuid)){
+                throw new \RuntimeException('The participant recovery acknowledgement could not be persisted.');
+            }
+        }catch(Throwable $exception){
+            $this->plugin->getLogger()->critical(
+                'TradeSystem could not safely recover participant ' . $uuid . ': ' .
+                get_class($exception) . ': ' . $exception->getMessage() .
+                '. The participant will be disconnected and the journal retained.'
+            );
+            $player->disconnect('TradeSystem could not safely save your recovered inventory. Please reconnect later.');
+            $this->plugin->getServer()->shutdown();
+            return;
+        }
+
+        $this->messages->send($player, 'trade-recovery-restored');
+        if($this->journalStore->bothParticipantsRecovered() && !$this->journalStore->clearIfBothRecovered()){
+            $this->plugin->getLogger()->critical('Both journal participants were recovered and saved, but journal cleanup failed. Trading remains locked until cleanup succeeds.');
+        }
+    }
+
     public function openMainForm(Player $player) : void{
         if($this->shuttingDown){
             return;
@@ -75,6 +166,10 @@ final class TradeManager{
 
     public function openPlayerSelectionForm(Player $player) : void{
         if($this->shuttingDown){
+            return;
+        }
+        if($this->isJournalBlocked()){
+            $this->sendJournalBlockedMessage($player);
             return;
         }
         $uuid = $player->getUniqueId()->toString();
@@ -176,7 +271,7 @@ final class TradeManager{
     /** @return list<Player> */
     public function getEligiblePlayers(Player $player) : array{
         $sourceUuid = $player->getUniqueId()->toString();
-        if($this->shuttingDown || $this->quarantineStore->isUnsafe() || $this->quarantineStore->contains($sourceUuid)){
+        if($this->shuttingDown || $this->isJournalBlocked() || $this->quarantineStore->isUnsafe() || $this->quarantineStore->contains($sourceUuid)){
             return [];
         }
         $eligible = [];
@@ -225,6 +320,10 @@ final class TradeManager{
     private function sendRequestToTarget(Player $sender, Player $target) : void{
         $senderUuid = $sender->getUniqueId()->toString();
         $targetUuid = $target->getUniqueId()->toString();
+        if($this->isJournalBlocked()){
+            $this->sendJournalBlockedMessage($sender);
+            return;
+        }
         if($this->shuttingDown){
             $this->messages->send($sender, 'trade-system-disabled');
             return;
@@ -334,6 +433,10 @@ final class TradeManager{
 
     public function acceptRequestById(Player $receiver, string $requestId) : void{
         if($this->shuttingDown){
+            return;
+        }
+        if($this->isJournalBlocked()){
+            $this->sendJournalBlockedMessage($receiver);
             return;
         }
         $request = $this->requests[$requestId] ?? null;
@@ -504,11 +607,14 @@ final class TradeManager{
             );
             $session->abortCommit();
             $this->finishSession($session);
-            $this->quarantinePlayer($session->partyOneUuid);
-            $this->quarantinePlayer($session->partyTwoUuid);
+            if($this->journalStore->isUnsafe() || !$this->journalStore->hasPendingTransaction()){
+                $this->quarantinePlayer($session->partyOneUuid);
+                $this->quarantinePlayer($session->partyTwoUuid);
+            }
             $this->messages->send($partyOne, 'trade-rollback-critical');
             $this->messages->send($partyTwo, 'trade-rollback-critical');
             $this->audit('CRITICAL_EXECUTOR_EXCEPTION', $session, 'inventory outcome unknown; exception=' . $exceptionClass);
+            $this->plugin->getServer()->shutdown();
             return;
         }
 
@@ -557,6 +663,13 @@ final class TradeManager{
 
         $session->abortCommit();
         $this->finishSession($session);
+        if($result->reason === 'journal-unavailable' || str_starts_with($result->reason, 'journal-prepare-failed')){
+            $this->plugin->getLogger()->error('Trade was rejected before inventory mutation because a durable journal could not be prepared: ' . $result->reason);
+            $this->messages->send($partyOne, 'trade-journal-unavailable');
+            $this->messages->send($partyTwo, 'trade-journal-unavailable');
+            $this->audit('JOURNAL_PREPARE_FAILED', $session, $result->reason);
+            return;
+        }
         if(!$result->rollbackSuccessful || str_starts_with($result->reason, 'rollback-failed')){
             $this->quarantinePlayer($session->partyOneUuid);
             $this->quarantinePlayer($session->partyTwoUuid);
@@ -564,6 +677,7 @@ final class TradeManager{
             $this->messages->send($partyOne, 'trade-rollback-critical');
             $this->messages->send($partyTwo, 'trade-rollback-critical');
             $this->audit('CRITICAL_ROLLBACK_FAILURE', $session, $result->reason);
+            $this->plugin->getServer()->shutdown();
         }else{
             $this->plugin->getLogger()->error('Trade transaction failed and was rolled back for session ' . $sessionId . ': ' . $result->reason);
             $this->messages->send($partyOne, 'trade-commit-failed');
@@ -609,6 +723,9 @@ final class TradeManager{
     public function getSessionFor(Player $player, string $sessionId) : ?TradeSession{
         $uuid = $player->getUniqueId()->toString();
         if($this->shuttingDown){
+            return null;
+        }
+        if($this->isJournalBlocked()){
             return null;
         }
         if($this->quarantineStore->isUnsafe()){
@@ -680,6 +797,16 @@ final class TradeManager{
         if($this->shuttingDown){
             return;
         }
+        if($this->journalStore->isUnsafe()){
+            $this->plugin->getServer()->shutdown();
+            return;
+        }
+        if($this->journalStore->hasPendingTransaction()){
+            if($this->journalStore->bothParticipantsRecovered() && !$this->journalStore->clearIfBothRecovered()){
+                $this->plugin->getLogger()->warning('TradeSystem is waiting for the resolved transaction journal to be cleared; all trading remains disabled.');
+            }
+            return;
+        }
         if($this->quarantineStore->isUnsafe()){
             $this->cancelSessionsForSafetyMode();
             return;
@@ -721,6 +848,10 @@ final class TradeManager{
     private function startSession(Player $partyOne, Player $partyTwo) : void{
         $uuidOne = $partyOne->getUniqueId()->toString();
         $uuidTwo = $partyTwo->getUniqueId()->toString();
+        if($this->isJournalBlocked()){
+            $this->sendJournalBlockedMessage($partyOne);
+            return;
+        }
         if($this->shuttingDown || $this->quarantineStore->isUnsafe()){
             $this->messages->send($partyOne, 'trade-system-disabled');
             return;
