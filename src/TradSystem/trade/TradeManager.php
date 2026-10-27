@@ -450,9 +450,6 @@ final class TradeManager{
     }
 
     public function confirmTrade(Player $player, string $sessionId, int $expectedRevision) : void{
-        if($this->shuttingDown){
-            return;
-        }
         $session = $this->getSessionFor($player, $sessionId);
         $uuid = $player->getUniqueId()->toString();
         if($session === null || $session->getRevision() !== $expectedRevision){
