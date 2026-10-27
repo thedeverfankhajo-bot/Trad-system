@@ -177,7 +177,19 @@ $assert(str_contains($managerSource, 'private bool $shuttingDown = false;') && s
 $assert(str_contains($managerSource, 'public function isShuttingDown() : bool{'), 'The UI can query whether callback work must be ignored.');
 $assert(substr_count($managerSource, 'public function confirmTrade(') === 1 && substr_count($managerSource, 'public function cancelTrade(') === 1, 'Confirmation and cancellation entrypoints remain distinct and unique.');
 $mainFormSource = (string) file_get_contents($root . '/src/TradSystem/form/MainForm.php');
-$assert(str_contains($mainFormSource, 'if($manager->isShuttingDown()){'), 'The main form cannot be reopened by a stale UI callback during shutdown.');
+foreach([
+    'src/TradSystem/form/MainForm.php',
+    'src/TradSystem/form/IncomingRequestsForm.php',
+    'src/TradSystem/form/OfferAmountForm.php',
+    'src/TradSystem/form/PlayerSelectionForm.php',
+    'src/TradSystem/form/RemoveOfferForm.php',
+    'src/TradSystem/form/SlotSelectionForm.php',
+    'src/TradSystem/form/TradeConfirmationForm.php',
+    'src/TradSystem/form/TradeOfferForm.php'
+] as $formPath){
+    $formSource = (string) file_get_contents($root . '/' . $formPath);
+    $assert(str_contains($formSource, 'if($manager->isShuttingDown()){'), 'Form rendering is blocked during shutdown: ' . $formPath);
+}
 $shutdownStart = strpos($managerSource, 'public function shutdown() : void{');
 $shutdownEnd = $shutdownStart !== false ? strpos($managerSource, 'private function startSession', $shutdownStart) : false;
 $shutdownBody = ($shutdownStart !== false && $shutdownEnd !== false) ? substr($managerSource, $shutdownStart, $shutdownEnd - $shutdownStart) : '';

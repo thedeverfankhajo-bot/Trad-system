@@ -9,6 +9,9 @@ use TradSystem\trade\TradeManager;
 
 final class IncomingRequestsForm{
     public static function send(TradeManager $manager, Player $player) : void{
+        if($manager->isShuttingDown()){
+            return;
+        }
         $messages = $manager->getMessages();
         $requests = $manager->getIncomingRequestsFor($player);
         if($requests === []){

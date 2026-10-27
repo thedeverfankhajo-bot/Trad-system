@@ -9,6 +9,9 @@ use TradSystem\trade\TradeManager;
 
 final class PlayerSelectionForm{
     public static function send(TradeManager $manager, Player $player) : void{
+        if($manager->isShuttingDown()){
+            return;
+        }
         $messages = $manager->getMessages();
         $targets = $manager->getEligiblePlayers($player);
         if($targets === []){

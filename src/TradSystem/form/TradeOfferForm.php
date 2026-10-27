@@ -9,6 +9,9 @@ use TradSystem\trade\TradeManager;
 
 final class TradeOfferForm{
     public static function send(TradeManager $manager, Player $player, string $sessionId) : void{
+        if($manager->isShuttingDown()){
+            return;
+        }
         $session = $manager->getSessionFor($player, $sessionId);
         if($session === null){
             $manager->getMessages()->send($player, 'trade-expired');

@@ -11,6 +11,9 @@ use TradSystem\util\ItemDisplayName;
 
 final class OfferAmountForm{
     public static function send(TradeManager $manager, Player $player, string $sessionId, int $slot, int $maxAmount, string $itemName, Item $sourceSnapshot, int $expectedRevision) : void{
+        if($manager->isShuttingDown()){
+            return;
+        }
         $messages = $manager->getMessages();
         $options = [];
         for($amount = 1; $amount <= $maxAmount; ++$amount){
