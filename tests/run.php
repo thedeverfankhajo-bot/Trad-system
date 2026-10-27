@@ -211,6 +211,13 @@ $assert(
     'Rollback revalidates both inventories after both restoration operations so cross-inventory listener effects cannot pass unnoticed.'
 );
 $integrationHarnessSource = (string) file_get_contents($root . '/tests/integration/src/TradeSystemIntegrationHarness/Main.php');
+$assert(
+    str_contains($integrationHarnessSource, '["success", "capacity", "stale-count", "stale-meta"]') &&
+    str_contains($integrationHarnessSource, '$changed->setCount(4)') &&
+    str_contains($integrationHarnessSource, '$changed->setCustomName("Changed after offer")') &&
+    str_contains($integrationHarnessSource, '$result->reason === "inventory-changed"'),
+    'Integration harness includes real inventory checks for stale source counts and metadata.'
+);
 $integrationRestoreSecond = strpos($integrationHarnessSource, '$restoredSecond = $this->restore($secondInventory, $beforeSecond);');
 $integrationFinalFirst = strpos($integrationHarnessSource, '$finalFirstMatches = $this->matchesSnapshot($firstInventory, $beforeFirst);');
 $integrationFinalSecond = strpos($integrationHarnessSource, '$finalSecondMatches = $this->matchesSnapshot($secondInventory, $beforeSecond);');

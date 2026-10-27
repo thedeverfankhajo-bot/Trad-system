@@ -38,7 +38,7 @@ final class Main extends PluginBase{
             $sender->sendMessage("Run this command in-game as the first disposable test player.");
             return true;
         }
-        if(count($args) !== 2 || !in_array(strtolower($args[0]), ["success", "capacity"], true)){
+        if(count($args) !== 2 || !in_array(strtolower($args[0]), ["success", "capacity", "stale-count", "stale-meta"], true)){
             $sender->sendMessage("Usage: /tradeint <success|capacity> <other-player>");
             return true;
         }
@@ -63,7 +63,7 @@ final class Main extends PluginBase{
         $message = "";
 
         try{
-            if($scenario === "success"){
+            if($scenario !== "capacity"){
                 $diamond = VanillaItems::DIAMOND();
                 $diamond->setCount(3);
                 $firstInventory->setItem(0, $diamond);
@@ -93,7 +93,7 @@ final class Main extends PluginBase{
                 time() + 120
             );
 
-            $firstAmount = $scenario === "success" ? 2 : 1;
+            $firstAmount = $scenario === "capacity" ? 1 : 2;
             if(!$session->setOffer($uuidFirst, 0, $firstAmount, $firstInventory->getItem(0))){
                 throw new \RuntimeException("Could not add the first test offer.");
             }
@@ -103,6 +103,19 @@ final class Main extends PluginBase{
             if(!$session->confirm($uuidFirst) || !$session->confirm($uuidSecond) || !$session->beginCommit()){
                 throw new \RuntimeException("Could not prepare the session for commit.");
             }
+
+            // Mutate a source stack only after its original offer snapshot has been recorded.
+            if($scenario === "stale-count"){
+                $changed = clone $firstInventory->getItem(0);
+                $changed->setCount(4);
+                $firstInventory->setItem(0, $changed);
+            }elseif($scenario === "stale-meta"){
+                $changed = clone $firstInventory->getItem(0);
+                $changed->setCustomName("Changed after offer");
+                $firstInventory->setItem(0, $changed);
+            }
+            $commitBaselineFirst = $this->snapshot($firstInventory);
+            $commitBaselineSecond = $this->snapshot($secondInventory);
 
             // After entering the executor, an unexpected result must be preserved for diagnosis.
             // Only a verified expected outcome permits restoring the initially empty inventories.
@@ -115,12 +128,20 @@ final class Main extends PluginBase{
                     && $this->countType($secondInventory, VanillaItems::DIAMOND()->getTypeId()) === 2
                     && $this->countType($secondInventory, VanillaItems::EMERALD()->getTypeId()) === 1;
                 $expectation = "successful trade transfers exact item counts to both players";
-            }else{
+            }elseif($scenario === "capacity"){
                 $passed = !$result->success
                     && $result->reason === "no-space"
                     && $this->matchesSnapshot($firstInventory, $preparedFirst)
                     && $this->matchesSnapshot($secondInventory, $preparedSecond);
                 $expectation = "full destination inventory rejects the trade before either inventory changes";
+            }else{
+                $passed = !$result->success
+                    && $result->reason === "inventory-changed"
+                    && $this->matchesSnapshot($firstInventory, $commitBaselineFirst)
+                    && $this->matchesSnapshot($secondInventory, $commitBaselineSecond);
+                $expectation = $scenario === "stale-count"
+                    ? "source stack count changes after offering reject the trade without further inventory mutations"
+                    : "source metadata changes after offering reject the trade without further inventory mutations";
             }
 
             if($passed){
