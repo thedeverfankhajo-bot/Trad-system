@@ -175,6 +175,7 @@ $assert(
 $assert(str_contains($managerSource, 'ItemDisplayName::sanitize($offer->getItemName())'), 'Offer summaries sanitize item-controlled display names.');
 $assert(str_contains($managerSource, 'private bool $shuttingDown = false;') && str_contains($managerSource, '$this->shuttingDown = true;'), 'Shutdown sets a persistent in-memory guard against stale callbacks.');
 $assert(str_contains($managerSource, 'public function isShuttingDown() : bool{'), 'The UI can query whether callback work must be ignored.');
+$assert(substr_count($managerSource, 'public function confirmTrade(') === 1 && substr_count($managerSource, 'public function cancelTrade(') === 1, 'Confirmation and cancellation entrypoints remain distinct and unique.');
 $mainFormSource = (string) file_get_contents($root . '/src/TradSystem/form/MainForm.php');
 $assert(str_contains($mainFormSource, 'if($manager->isShuttingDown()){'), 'The main form cannot be reopened by a stale UI callback during shutdown.');
 $shutdownStart = strpos($managerSource, 'public function shutdown() : void{');

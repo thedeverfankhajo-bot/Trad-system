@@ -449,7 +449,7 @@ final class TradeManager{
         $this->refreshTradeForms($session);
     }
 
-    public function cancelTrade(Player $player, string $sessionId) : void{
+    public function confirmTrade(Player $player, string $sessionId, int $expectedRevision) : void{
         if($this->shuttingDown){
             return;
         }
@@ -575,6 +575,7 @@ final class TradeManager{
     }
 
     public function cancelTrade(Player $player, string $sessionId) : void{
+        if($this->shuttingDown){
             return;
         }
         $session = $this->getSessionFor($player, $sessionId);
