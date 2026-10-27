@@ -9,6 +9,8 @@ use TradSystem\trade\TradeQuarantineStore;
 use TradSystem\util\ItemDisplayName;
 use TradSystem\util\MessageFormatter;
 
+require __DIR__ . '/stubs/Item.php';
+require __DIR__ . '/../src/TradSystem/trade/TradeOffer.php';
 require __DIR__ . '/../src/TradSystem/trade/TradeState.php';
 require __DIR__ . '/../src/TradSystem/trade/TradeSession.php';
 require __DIR__ . '/../src/TradSystem/trade/TradeRequest.php';
@@ -81,6 +83,60 @@ $assert($request->senderUuid === 'uuid-a' && $request->receiverUuid === 'uuid-b'
 $assert($request->isExpired(99) === false, 'A request is valid before its expiry timestamp.');
 $assert($request->isExpired(100) === true, 'A request expires at its expiry timestamp.');
 $assert(strlen($request->id) === 32, 'Request IDs use a 128-bit random hexadecimal token.');
+$offerSession = new TradeSession('session-offers', 'uuid-a', 'uuid-b', 'Alice', 'Bob', time() + 300);
+$originalItem = new \pocketmine\item\Item(5, 'Diamond');
+$assert($offerSession->setOffer('uuid-a', 4, 3, $originalItem), 'A participant can add an offer for a source slot.');
+$firstOffer = $offerSession->getOffer('uuid-a', 4);
+$transferItem = $firstOffer?->getTransferItem();
+$assert(
+    $firstOffer?->getSourceCount() === 5 && $transferItem?->getCount() === 3 && $originalItem->getCount() === 5,
+    'A transfer item copies the offered amount without changing the source item or saved source snapshot.'
+);
+$originalItem->setCount(7);
+$assert(
+    $firstOffer?->getSourceCount() === 5 && $firstOffer?->getTransferItem()->getCount() === 3,
+    'Offer snapshots and transfer items are isolated clones rather than references to a mutable source item.'
+);
+$assert($offerSession->getRevision() === 1, 'Adding an offer advances the form revision.');
+$assert(
+    $offerSession->setOffer('uuid-a', 4, 2, new \pocketmine\item\Item(5, 'Diamond')),
+    'Updating an existing source slot replaces its offer.'
+);
+$assert(
+    count($offerSession->getOffersFor('uuid-a')) === 1 &&
+    $offerSession->getOffer('uuid-a', 4)?->offeredCount === 2,
+    'A source slot cannot be represented by multiple offer entries.'
+);
+$assert($offerSession->setOffer('uuid-a', 7, 1, new \pocketmine\item\Item(1, 'Iron')), 'A separate source slot can be offered.');
+$assert(count($offerSession->getOffersFor('uuid-a')) === 2, 'Different source slots remain separate offer entries.');
+$revisionBeforeInvalidOffers = $offerSession->getRevision();
+$assert(!$offerSession->setOffer('stranger', 8, 1, new \pocketmine\item\Item()), 'A non-participant cannot add an offer.');
+$assert(!$offerSession->setOffer('uuid-a', -1, 1, new \pocketmine\item\Item()), 'Negative source slots are rejected by the session state model.');
+$assert(!$offerSession->setOffer('uuid-a', 8, 0, new \pocketmine\item\Item()), 'Zero-sized offers are rejected by the session state model.');
+$assert($offerSession->getRevision() === $revisionBeforeInvalidOffers, 'Rejected offer edits do not advance the revision.');
+$assert($offerSession->confirm('uuid-a') && $offerSession->confirm('uuid-b'), 'Both participants can confirm the current offer revision.');
+$revisionBeforeEdit = $offerSession->getRevision();
+$assert(
+    $offerSession->setOffer('uuid-a', 4, 1, new \pocketmine\item\Item(5, 'Diamond')),
+    'An offer can be changed after confirmation.'
+);
+$assert(
+    $offerSession->getRevision() === $revisionBeforeEdit + 1 &&
+    !$offerSession->isConfirmed('uuid-a') &&
+    !$offerSession->isConfirmed('uuid-b') &&
+    $offerSession->getState() === TradeState::OFFERING,
+    'Changing an offer invalidates both confirmations and advances the revision.'
+);
+$revisionBeforeRemoval = $offerSession->getRevision();
+$assert($offerSession->removeOffer('uuid-a', 4), 'A participant can remove their own offer.');
+$assert(
+    $offerSession->getOffer('uuid-a', 4) === null &&
+    $offerSession->getRevision() === $revisionBeforeRemoval + 1,
+    'Removing an offer clears its source slot entry and advances the revision.'
+);
+$assert(!$offerSession->removeOffer('stranger', 7), 'A non-participant cannot remove another player offer.');
+$assert($offerSession->cancel(), 'The offer test session can be cancelled.');
+$assert(!$offerSession->setOffer('uuid-a', 4, 1, new \pocketmine\item\Item()), 'A terminal session rejects further offer edits.');
 
 $quarantinePath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'tradesystem-quarantine-' . bin2hex(random_bytes(8)) . '.json';
 $quarantineErrors = [];
