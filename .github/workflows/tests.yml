@@ -46,6 +46,14 @@ jobs:
             abort "The trade command must declare its permission" unless manifest.dig("commands", "trade", "permission") == permission
             permission_data = manifest.dig("permissions", permission)
             abort "The trade permission must default to true" unless permission_data.is_a?(Hash) && permission_data["default"] == true
+            harness = YAML.load_file("tests/integration/plugin.yml", aliases: true)
+            abort "Integration harness manifest must be a mapping" unless harness.is_a?(Hash)
+            abort "Unexpected integration harness Main class" unless harness["main"] == "TradeSystemIntegrationHarness\\Main"
+            abort "Integration harness must depend on TradeSystem" unless Array(harness["depend"]).include?("TradeSystem")
+            harness_permission = "tradesystem.integration.run"
+            abort "Integration harness command must declare its permission" unless harness.dig("commands", "tradeint", "permission") == harness_permission
+            harness_permission_data = harness.dig("permissions", harness_permission)
+            abort "Integration harness permission must default to op" unless harness_permission_data.is_a?(Hash) && harness_permission_data["default"] == "op"
             ARGV.each do |path|
               YAML.load_file(path, aliases: true)
               puts "Valid YAML: #{path}"

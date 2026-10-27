@@ -58,6 +58,8 @@ final class Main extends PluginBase{
         $beforeFirst = $this->snapshot($firstInventory);
         $beforeSecond = $this->snapshot($secondInventory);
         $safeToRestore = true;
+        $testPassed = false;
+        $message = "";
 
         try{
             if($scenario === "success"){
@@ -122,10 +124,8 @@ final class Main extends PluginBase{
 
             if($passed){
                 $safeToRestore = true;
+                $testPassed = true;
                 $message = "PASS: " . $expectation . ". Test inventories will be restored to empty.";
-                $this->getLogger()->info($message);
-                $sender->sendMessage($message);
-                $partner->sendMessage($message);
             }else{
                 $message = "FAIL: " . $expectation . ". Result=" . $result->reason .
                     ". Test inventory contents were left in place for inspection; reconcile them manually.";
@@ -151,6 +151,11 @@ final class Main extends PluginBase{
                     );
                     $sender->sendMessage("CRITICAL: test cleanup could not be verified. Inspect both inventories before further use.");
                     $partner->sendMessage("CRITICAL: test cleanup could not be verified. Inspect both inventories before further use.");
+                }
+                elseif($testPassed){
+                    $this->getLogger()->info($message);
+                    $sender->sendMessage($message);
+                    $partner->sendMessage($message);
                 }
             }else{
                 $this->getLogger()->critical(

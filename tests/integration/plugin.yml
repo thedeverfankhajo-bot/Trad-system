@@ -1,5 +1,5 @@
 name: TradeSystemIntegrationHarness
-main: TradeSystemIntegrationHarness\\Main
+main: TradeSystemIntegrationHarness\Main
 version: 0.1.0
 api: [5.0.0]
 authors: [thedeverfankhajo-bot]
