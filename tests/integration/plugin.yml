@@ -8,7 +8,7 @@ depend: [TradeSystem]
 commands:
   tradeint:
     description: Run TradeSystem inventory integration checks on two disposable accounts.
-    usage: "/tradeint <success|capacity|stale-count|stale-meta> <other-player>"
+    usage: "/tradeint <success|capacity|stale-count|stale-meta|stale-type|stale-slot> <other-player>"
     permission: tradesystem.integration.run
 permissions:
   tradesystem.integration.run:

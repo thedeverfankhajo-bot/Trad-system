@@ -211,6 +211,11 @@ $assert(
     'Rollback revalidates both inventories after both restoration operations so cross-inventory listener effects cannot pass unnoticed.'
 );
 $integrationHarnessSource = (string) file_get_contents($root . '/tests/integration/src/TradeSystemIntegrationHarness/Main.php');
+$integrationManifest = (string) file_get_contents($root . '/tests/integration/plugin.yml');
+$assert(
+    str_contains($integrationManifest, 'usage: "/tradeint <success|capacity|stale-count|stale-meta|stale-type|stale-slot> <other-player>"'),
+    'Integration harness command usage lists all supported inventory scenarios.'
+);
 $assert(
     str_contains($integrationHarnessSource, '["success", "capacity", "stale-count", "stale-meta", "stale-type", "stale-slot"]') &&
     str_contains($integrationHarnessSource, '$changed->setCount(4)') &&

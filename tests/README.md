@@ -36,7 +36,7 @@ Run the following against a disposable API 5 server with two test accounts and r
 
 ## Runnable API 5 inventory harness
 
-See [`tests/integration/README.md`](integration/README.md) for a separate test-only plugin that exercises the real executor against two live, initially empty player inventories. It covers successful item transfer and no-space preflight rejection. It must run only on a disposable staging server; it is not part of the production plugin and has not been run as part of the current CI workflow.
+See [`tests/integration/README.md`](integration/README.md) for a separate test-only plugin that exercises the real executor against two live, initially empty player inventories. Its six cases cover successful transfer, no-space preflight rejection, and stale source count, metadata, type, and slot-movement changes. It must run only on a disposable staging server; it is not part of the production plugin and has not been run as part of the current CI workflow.
 
 ## Deployment safety note
 
