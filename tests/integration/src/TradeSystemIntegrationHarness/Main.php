@@ -38,8 +38,8 @@ final class Main extends PluginBase{
             $sender->sendMessage("Run this command in-game as the first disposable test player.");
             return true;
         }
-        if(count($args) !== 2 || !in_array(strtolower($args[0]), ["success", "capacity", "stale-count", "stale-meta"], true)){
-            $sender->sendMessage("Usage: /tradeint <success|capacity> <other-player>");
+        if(count($args) !== 2 || !in_array(strtolower($args[0]), ["success", "capacity", "stale-count", "stale-meta", "stale-type"], true)){
+            $sender->sendMessage("Usage: /tradeint <success|capacity|stale-count|stale-meta|stale-type> <other-player>");
             return true;
         }
 
@@ -113,6 +113,10 @@ final class Main extends PluginBase{
                 $changed = clone $firstInventory->getItem(0);
                 $changed->setCustomName("Changed after offer");
                 $firstInventory->setItem(0, $changed);
+            }elseif($scenario === "stale-type"){
+                $changed = VanillaItems::GOLD_INGOT();
+                $changed->setCount(3);
+                $firstInventory->setItem(0, $changed);
             }
             $commitBaselineFirst = $this->snapshot($firstInventory);
             $commitBaselineSecond = $this->snapshot($secondInventory);
@@ -139,9 +143,11 @@ final class Main extends PluginBase{
                     && $result->reason === "inventory-changed"
                     && $this->matchesSnapshot($firstInventory, $commitBaselineFirst)
                     && $this->matchesSnapshot($secondInventory, $commitBaselineSecond);
-                $expectation = $scenario === "stale-count"
-                    ? "source stack count changes after offering reject the trade without further inventory mutations"
-                    : "source metadata changes after offering reject the trade without further inventory mutations";
+                $expectation = match($scenario){
+                    "stale-count" => "source stack count changes after offering reject the trade without further inventory mutations",
+                    "stale-meta" => "source metadata changes after offering reject the trade without further inventory mutations",
+                    default => "source item type changes after offering reject the trade without further inventory mutations"
+                };
             }
 
             if($passed){

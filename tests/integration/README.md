@@ -31,6 +31,7 @@ Start the test server and verify that both plugins load without errors. The comm
 2. With the first empty account in-game, run `/tradeint capacity <other-player>`. The harness fills every storage slot in the first account with a full dirt stack and places a diamond sword in slot 0 of the second. It offers one dirt for the sword. Since removing one dirt leaves every slot occupied, preflight must return `no-space` and both prepared inventories must remain exactly unchanged before the harness restores them to empty.
 3. Run `/tradeint stale-count <other-player>`. The harness records a 3-diamond source snapshot, then changes the offered stack count before executing the commit. The executor must return `inventory-changed` and leave both commit-baseline inventories unchanged.
 4. Run `/tradeint stale-meta <other-player>`. The harness records the source snapshot, then changes the diamond's custom name before executing the commit. The executor must return `inventory-changed` and leave both commit-baseline inventories unchanged.
+5. Run `/tradeint stale-type <other-player>`. The harness records the offered diamonds, replaces the source slot with three gold ingots before commit, and expects `inventory-changed` with both commit-baseline inventories unchanged.
 
 After an expected result, the harness restores both initially empty inventories and now re-verifies both snapshots after both restoration operations. This last check catches inventory listeners that mutate the first player while the second inventory is restored.
 
