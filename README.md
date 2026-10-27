@@ -97,6 +97,17 @@ Before final commit, offered items remain where they were and are not escrowed o
 - **Recovery procedure:** stop the server, inspect the critical log and both players' saved inventories, manually reconcile any discrepancy from trusted backups, then remove only the repaired players' UUID entries from `trade-quarantine.json` and remove `trade-quarantine.json.unsafe` only after the full quarantine has been reviewed. Delete stale `.tmp` files only after reconciliation. Restart and verify the logs before enabling player trading. Do not clear quarantine merely to restore access without checking item conservation.
 - This repository has automated domain/state smoke tests but does not claim to have run a live PMMP server integration test. Follow `tests/README.md` before production rollout.
 
+
+## Build a PHAR
+
+The repository CI builds a runtime-only `TradeSystem.phar` after validating PHP syntax and running the smoke tests. To build locally with PHP CLI and the Phar extension enabled:
+
+```bash
+php -d phar.readonly=0 tools/build-phar.php
+```
+
+The output is `build/TradeSystem.phar`. The builder includes `plugin.yml`, `src/`, and `resources/`; it excludes tests, docs, PHPStan development files, and repository metadata. It verifies required archive entries and prints a SHA-256 checksum. On GitHub, download the `TradeSystem-PHAR` artifact from the successful `package-phar` workflow run. Artifacts expire after 30 days. This packaging step does not constitute a live-server test; validate the PHAR on a disposable PocketMine-MP API 5 staging server before production use.
+
 ## Build, lint, static analysis, and tests
 
 ```bash
