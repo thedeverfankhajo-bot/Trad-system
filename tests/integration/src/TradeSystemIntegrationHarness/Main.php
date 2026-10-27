@@ -145,7 +145,11 @@ final class Main extends PluginBase{
             if($safeToRestore){
                 $restoredFirst = $this->restore($firstInventory, $beforeFirst);
                 $restoredSecond = $this->restore($secondInventory, $beforeSecond);
-                if(!$restoredFirst || !$restoredSecond){
+                // Restoring the second inventory can trigger listeners that mutate the first.
+                // Re-verify both original snapshots only after both restore operations finish.
+                $finalFirstMatches = $this->matchesSnapshot($firstInventory, $beforeFirst);
+                $finalSecondMatches = $this->matchesSnapshot($secondInventory, $beforeSecond);
+                if(!$restoredFirst || !$restoredSecond || !$finalFirstMatches || !$finalSecondMatches){
                     $this->getLogger()->critical(
                         "Integration harness could not restore both initially empty test inventories. " .
                         "Stop testing and inspect both accounts before any further use."

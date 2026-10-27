@@ -141,6 +141,8 @@ $requiredFiles = [
     'plugin.yml', 'composer.json', 'README.md', 'resources/config.yml', 'resources/messages.yml',
     'src/TradSystem/Main.php', 'src/TradSystem/trade/TradeManager.php',
     'src/TradSystem/trade/TradeExecutor.php', 'src/TradSystem/form/SimpleForm.php',
+    'tests/integration/plugin.yml', 'tests/integration/README.md',
+    'tests/integration/src/TradeSystemIntegrationHarness/Main.php',
     '.github/workflows/tests.yml'
 ];
 foreach($requiredFiles as $file){
@@ -208,6 +210,20 @@ $assert(
     strpos($executorSource, '$this->contentsMatchSafely($inventoryOne, $beforeOne);') > strpos($executorSource, '$restoredTwo = $this->restore($inventoryTwo, $beforeTwo);'),
     'Rollback revalidates both inventories after both restoration operations so cross-inventory listener effects cannot pass unnoticed.'
 );
+$integrationHarnessSource = (string) file_get_contents($root . '/tests/integration/src/TradeSystemIntegrationHarness/Main.php');
+$integrationRestoreSecond = strpos($integrationHarnessSource, '$restoredSecond = $this->restore($secondInventory, $beforeSecond);');
+$integrationFinalFirst = strpos($integrationHarnessSource, '$finalFirstMatches = $this->matchesSnapshot($firstInventory, $beforeFirst);');
+$integrationFinalSecond = strpos($integrationHarnessSource, '$finalSecondMatches = $this->matchesSnapshot($secondInventory, $beforeSecond);');
+$assert(
+    $integrationRestoreSecond !== false &&
+    $integrationFinalFirst !== false &&
+    $integrationFinalSecond !== false &&
+    $integrationFinalFirst > $integrationRestoreSecond &&
+    $integrationFinalSecond > $integrationRestoreSecond &&
+    str_contains($integrationHarnessSource, '!$finalFirstMatches || !$finalSecondMatches'),
+    'Integration harness verifies both original inventories after both cleanup restores finish.'
+);
+
 $config = (string) file_get_contents($root . '/resources/config.yml');
 foreach(['request-timeout-seconds', 'trade-timeout-seconds', 'max-offer-slots', 'max-items-per-offer', 'max-trades-per-minute', 'cooldown-seconds', 'allow-self-trade', 'messages-prefix', 'sound-effects', 'enable-audit-log'] as $key){
     $assert(str_contains($config, $key . ':'), 'config.yml contains required setting ' . $key . '.');
