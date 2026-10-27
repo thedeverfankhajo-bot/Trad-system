@@ -16,7 +16,7 @@ A dependency-free player-to-player **item trading** plugin for PocketMine-MP API
 4. Restart the server and use `/trade` in-game.
 5. Test on a staging server before enabling trading on a production server.
 
-If no release exists yet for the version in `plugin.yml`, open the [Publish PHAR release workflow](https://github.com/thedeverfankhajo-bot/Trad-system/actions/workflows/release.yml), choose **Run workflow** on `main`, and enter the version with a `v` prefix (currently `v1.1.0`). The workflow validates the exact release source, runs the checks, builds the PHAR, calculates its checksum, and publishes both assets. It also handles an existing version tag by building from that exact tag, and refuses to overwrite an existing release.
+To publish a release, make sure the version in `plugin.yml` is final, then create and push a matching version tag (currently `v1.1.0`): `git tag v1.1.0` followed by `git push origin v1.1.0`. The [release workflow](https://github.com/thedeverfankhajo-bot/Trad-system/actions/workflows/release.yml) runs only for `v*` tags, validates the tagged source, runs tests and YAML checks, builds the PHAR, creates a SHA-256 checksum, and publishes both assets. If that tag already exists, do not force-push it; bump the version in `plugin.yml` and use a new tag.
 
 ## Features
 
