@@ -1,12 +1,12 @@
 # ADR 0001: Crash-consistent trade commits
 
-- **Status:** Accepted as a design constraint; implementation deferred.
+- **Status:** Implemented with durable journal/reconnect recovery; absolute storage and power-loss guarantees remain unproven without target-server fault injection.
 - **Date:** 2026-10-27
 - **Scope:** The item-transfer commit path in `TradeExecutor` and recovery behavior coordinated by `TradeManager`.
 
 ## Context
 
-The current executor validates both source offers, simulates both target inventories, captures in-memory inventory snapshots, applies each inventory plan synchronously, and verifies the result. If an exception or mismatch is detected, it attempts to restore both snapshots. If rollback cannot be verified, the participants are quarantined and the trading system fails closed when quarantine state cannot be trusted.
+The executor validates offers and capacity, captures before/after snapshots using PocketMine's public Item NBT serialization, and durably writes a checksummed `PREPARED` journal before mutation. It applies both plans synchronously, verifies after-states, records `COMMITTED`, saves both live players, and retains the journal until saves and cleanup succeed. On participant join, an unresolved journal restores `before` for `PREPARED` or `after` for `COMMITTED`, verifies the inventory, saves the player, and acknowledges recovery. New trades remain blocked while a journal is pending; malformed/untrusted state fails closed.
 
 This is meaningful protection against detected in-process failures, but it is not a durable transaction across two player inventories. A process termination, host crash, power loss, or storage failure between inventory updates can happen before the plugin observes an exception or completes rollback. The persistent quarantine store does not contain the full before/after inventory state and therefore cannot by itself repair such a crash.
 
@@ -35,6 +35,6 @@ For every boundary, restart the server and test both participants reconnecting i
 
 ## Consequences
 
-- The present implementation remains explicitly **not crash-atomic**.
-- This ADR does not claim that a journal has been implemented or that crash recovery has been tested.
-- A future implementation must be a coherent change including journal code, recovery gating, fault-injection tests, documentation, and CI checks. If those prerequisites cannot be validated, retain the limitation rather than weakening the safety model.
+- The journal supports idempotent before/after recovery after process restarts when the record is intact and player data can be saved/reloaded.
+- It does not prove power-loss durability across every filesystem, storage provider, or third-party plugin. PocketMine's public save API emits `PlayerDataSaveEvent`, but provider write failures may be logged internally rather than returned to plugins.
+- Live server integration and fault injection at write/apply/save boundaries remain required before production deployment.

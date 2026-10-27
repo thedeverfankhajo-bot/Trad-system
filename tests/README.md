@@ -2,7 +2,9 @@
 
 ## Automated checks in this repository
 
-- `php tests/run.php`: smoke tests for request expiration, participant authorization, state transitions, two-party confirmation, duplicate commit prevention, rejection of ordinary cancellation during `COMMITTING`, explicit abort after executor failure, shutdown preservation of in-flight session mappings, shutdown guard against stale form callbacks, confirmation reset, offer slot replacement, isolated source snapshots, transfer-count copies, offer revision changes, confirmation invalidation after edits, indexed PMMP exact-name/UUID lookup paths, safe one-pass message interpolation, item display-name sanitization, persistent rollback quarantine, corrupt/list-root fail-closed behavior, incomplete-write safety markers, failed-storage handling, and required project files/configuration.
+- `php tests/run.php`: smoke tests for request expiry, participant authorization, state transitions, two-party confirmation, duplicate commit prevention, COMMITTING cancellation guards, shutdown/callback guards, offer snapshots and revision changes, indexed PMMP player lookup, journal PREPARED/COMMITTED transitions, persisted recovery markers, checksum/tampering rejection, malformed journal fail-closed handling, quarantine persistence, and required project files/configuration.
+
+`TradeJournalStore` persistence tests use synthetic encoded payloads to exercise file/checksum/state transitions; only the separate disposable-server harness can verify actual NBT serialization, player saves, join-time recovery, and live inventory events.
 
 `tests/stubs/Item.php` is a minimal stand-in used only to test `TradeOffer` and `TradeSession` state semantics without booting PocketMine-MP. It does not emulate real `Item` equality/NBT, `PlayerInventory`, PMMP events, or the live transaction pipeline.
 - `composer lint`: PHP syntax validation for every source and test file.

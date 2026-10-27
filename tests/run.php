@@ -15,6 +15,7 @@ require __DIR__ . '/../src/TradSystem/trade/TradeState.php';
 require __DIR__ . '/../src/TradSystem/trade/TradeSession.php';
 require __DIR__ . '/../src/TradSystem/trade/TradeRequest.php';
 require __DIR__ . '/../src/TradSystem/trade/TradeQuarantineStore.php';
+require __DIR__ . '/../src/TradSystem/trade/TradeJournalStore.php';
 require __DIR__ . '/../src/TradSystem/util/MessageFormatter.php';
 require __DIR__ . '/../src/TradSystem/util/ItemDisplayName.php';
 
@@ -138,6 +139,66 @@ $assert(!$offerSession->removeOffer('stranger', 7), 'A non-participant cannot re
 $assert($offerSession->cancel(), 'The offer test session can be cancelled.');
 $assert(!$offerSession->setOffer('uuid-a', 4, 1, new \pocketmine\item\Item()), 'A terminal session rejects further offer edits.');
 
+$journalPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'tradesystem-journal-' . bin2hex(random_bytes(8)) . '.json';
+$journalErrors = [];
+$onJournalError = static function(string $message) use (&$journalErrors) : void{
+    $journalErrors[] = $message;
+};
+$beforeA = ['size' => 3, 'slots' => [0 => base64_encode('before-a')]];
+$beforeB = ['size' => 3, 'slots' => [1 => base64_encode('before-b')]];
+$afterA = ['size' => 3, 'slots' => [2 => base64_encode('after-a')]];
+$afterB = ['size' => 3, 'slots' => [0 => base64_encode('after-b')]];
+$journalStore = new TradeJournalStore($journalPath, $onJournalError);
+$assert(!$journalStore->isUnsafe() && !$journalStore->hasPendingTransaction(), 'A missing trade journal starts with no pending transaction.');
+$assert($journalStore->prepare('uuid-a', 'uuid-b', $beforeA, $beforeB, $afterA, $afterB), 'A valid transaction can be written durably as PREPARED.');
+$assert(is_file($journalPath), 'Preparing a transaction creates its canonical journal file.');
+$assert(($journalStore->getRecord()['state'] ?? null) === 'PREPARED', 'A prepared journal records that recovery must restore before-states.');
+$assert(!$journalStore->prepare('uuid-c', 'uuid-d', $beforeA, $beforeB, $afterA, $afterB), 'The journal refuses a second transaction while the first is unresolved.');
+$loadedPrepared = new TradeJournalStore($journalPath, $onJournalError);
+$assert(!$loadedPrepared->isUnsafe() && ($loadedPrepared->getRecord()['transaction_id'] ?? null) === ($journalStore->getRecord()['transaction_id'] ?? null), 'A complete journal reloads with the same transaction ID.');
+$assert($loadedPrepared->markCommitted(), 'A prepared journal can be transitioned to COMMITTED.');
+$assert(($loadedPrepared->getRecord()['state'] ?? null) === 'COMMITTED', 'COMMITTED records the after-state decision.');
+$loadedCommitted = new TradeJournalStore($journalPath, $onJournalError);
+$assert(!$loadedCommitted->isUnsafe() && ($loadedCommitted->getRecord()['state'] ?? null) === 'COMMITTED', 'The committed decision survives journal reconstruction.');
+$assert($loadedCommitted->markRecovered('uuid-a'), 'The first participant recovery acknowledgement can be persisted.');
+$assert(!$loadedCommitted->bothParticipantsRecovered(), 'One recovered participant is not enough to clear the journal.');
+$assert($loadedCommitted->markRecovered('uuid-b'), 'The second participant recovery acknowledgement can be persisted.');
+$assert($loadedCommitted->bothParticipantsRecovered(), 'The journal identifies when both committed snapshots are recovered.');
+$assert($loadedCommitted->clearIfBothRecovered(), 'The resolved committed journal can be removed after both recovery acknowledgements.');
+$assert(!is_file($journalPath), 'Clearing a resolved journal removes the canonical record.');
+$emptyJournal = new TradeJournalStore($journalPath, $onJournalError);
+$assert(!$emptyJournal->isUnsafe() && !$emptyJournal->hasPendingTransaction(), 'A cleared journal returns to an empty safe state.');
+$assert($emptyJournal->prepare('uuid-a', 'uuid-b', $beforeA, $beforeB, $afterA, $afterB), 'A new PREPARED transaction can start after prior cleanup.');
+$assert($emptyJournal->clearAfterRollback(), 'A verified rollback can clear a PREPARED transaction.');
+@unlink($journalPath);
+@unlink($journalPath . '.tmp');
+@unlink($journalPath . '.unsafe');
+
+$corruptJournalPath = $journalPath . '.corrupt';
+file_put_contents($corruptJournalPath, '{"version":1,"state":"PREPARED"}');
+$corruptJournal = new TradeJournalStore($corruptJournalPath, $onJournalError);
+$assert($corruptJournal->isUnsafe(), 'Malformed transaction journal data disables journal-backed trading.');
+$assert(is_file($corruptJournalPath . '.unsafe'), 'Malformed transaction journal data creates a persistent safety lock.');
+$lockedJournal = new TradeJournalStore($corruptJournalPath, $onJournalError);
+$assert($lockedJournal->isUnsafe(), 'The journal safety lock persists across store reconstruction.');
+@unlink($corruptJournalPath);
+@unlink($corruptJournalPath . '.tmp');
+@unlink($corruptJournalPath . '.unsafe');
+
+$tamperedJournalPath = $journalPath . '.tampered';
+$tamperedJournal = new TradeJournalStore($tamperedJournalPath, $onJournalError);
+$assert($tamperedJournal->prepare('uuid-a', 'uuid-b', $beforeA, $beforeB, $afterA, $afterB), 'A journal can be prepared for integrity-tampering detection.');
+$tamperedContent = (string) file_get_contents($tamperedJournalPath);
+$tamperedContent = str_replace('"state": "PREPARED"', '"state": "COMMITTED"', $tamperedContent);
+file_put_contents($tamperedJournalPath, $tamperedContent);
+$rejectedTampering = new TradeJournalStore($tamperedJournalPath, $onJournalError);
+$assert($rejectedTampering->isUnsafe(), 'A journal whose decision is changed without recomputing its checksum is rejected.');
+@unlink($tamperedJournalPath);
+@unlink($tamperedJournalPath . '.tmp');
+@unlink($tamperedJournalPath . '.unsafe');
+
+$assert($journalErrors !== [], 'Journal storage issues are reported through the supplied logging callback.');
+
 $quarantinePath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'tradesystem-quarantine-' . bin2hex(random_bytes(8)) . '.json';
 $quarantineErrors = [];
 $onQuarantineError = static function(string $message) use (&$quarantineErrors) : void{
@@ -196,7 +257,9 @@ $root = dirname(__DIR__);
 $requiredFiles = [
     'plugin.yml', 'composer.json', 'README.md', 'resources/config.yml', 'resources/messages.yml',
     'src/TradSystem/Main.php', 'src/TradSystem/trade/TradeManager.php',
-    'src/TradSystem/trade/TradeExecutor.php', 'src/TradSystem/form/SimpleForm.php',
+    'src/TradSystem/trade/TradeExecutor.php', 'src/TradSystem/trade/TradeJournalStore.php',
+    'src/TradSystem/trade/TradePlayerDataSaver.php', 'src/TradSystem/util/InventorySnapshotCodec.php',
+    'src/TradSystem/form/SimpleForm.php', 'tools/build-phar.php',
     'tests/integration/plugin.yml', 'tests/integration/README.md',
     'tests/integration/src/TradeSystemIntegrationHarness/Main.php',
     '.github/workflows/tests.yml'
@@ -211,6 +274,38 @@ $manifest = (string) file_get_contents($root . '/plugin.yml');
 $assert(str_contains($manifest, 'name: TradeSystem'), 'plugin.yml declares the plugin name.');
 $assert(str_contains($manifest, 'main: TradSystem\\Main'), 'plugin.yml points to the Main class.');
 $managerSource = (string) file_get_contents($root . '/src/TradSystem/trade/TradeManager.php');
+
+$journalStoreSource = (string) file_get_contents($root . '/src/TradSystem/trade/TradeJournalStore.php');
+$executorJournalSource = (string) file_get_contents($root . '/src/TradSystem/trade/TradeExecutor.php');
+$mainSource = (string) file_get_contents($root . '/src/TradSystem/Main.php');
+$playerListenerSource = (string) file_get_contents($root . '/src/TradSystem/listener/PlayerListener.php');
+$assert(
+    str_contains($executorJournalSource, 'InventorySnapshotCodec::capture($inventoryOne)') &&
+    strpos($executorJournalSource, '$this->journal->prepare(') < strpos($executorJournalSource, '$this->apply($inventoryOne, $planOne)'),
+    'The executor persists before/after inventory snapshots in PREPARED before applying either inventory plan.'
+);
+$assert(
+    str_contains($journalStoreSource, 'hash_equals($checksum, hash("sha256", $canonical))') &&
+    str_contains($journalStoreSource, 'fflush($handle)') &&
+    str_contains($journalStoreSource, 'fsync($handle)') &&
+    str_contains($journalStoreSource, '@rename($temporaryPath, $this->path)'),
+    'The journal validates its checksum and uses a complete write, fsync, and atomic replacement.'
+);
+$assert(
+    str_contains($executorJournalSource, '$this->journal->markCommitted()') &&
+    str_contains($executorJournalSource, '$this->rollbackPreparedTransaction(') &&
+    str_contains($executorJournalSource, '$this->journal->clearAfterCommittedSave()'),
+    'The executor records COMMITTED only after verifying both after-states and retains the journal through saves.'
+);
+$assert(
+    str_contains($managerSource, 'recoverJournalFor(Player $player)') &&
+    str_contains($managerSource, 'isJournalBlocked()') &&
+    str_contains($playerListenerSource, 'onPlayerJoin(PlayerJoinEvent $event)') &&
+    str_contains($mainSource, 'enforceRecoveryBarrier()'),
+    'An unresolved journal gates new trades and is recovered at player join before normal gameplay continues.'
+);
+
+
 $lookupStart = strpos($managerSource, 'private function findOnlinePlayerByUuid(string $uuid) : ?Player{');
 $lookupEnd = $lookupStart !== false ? strpos($managerSource, "\n    private function playSound", $lookupStart) : false;
 $uuidLookupBody = ($lookupStart !== false && $lookupEnd !== false) ? substr($managerSource, $lookupStart, $lookupEnd - $lookupStart) : '';
