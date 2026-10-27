@@ -88,13 +88,16 @@ jobs:
       - name: Verify archive and print checksum
         run: |
           php -r '$p = new Phar("build/TradeSystem.phar"); foreach (["plugin.yml", "src/TradSystem/Main.php", "resources/config.yml", "resources/messages.yml"] as $f) { if (!$p->offsetExists($f)) { fwrite(STDERR, "Missing archive entry: $f\\n"); exit(1); } } echo "Archive entries verified.\\n";'
-          sha256sum build/TradeSystem.phar
+          sha256sum build/TradeSystem.phar > build/TradeSystem.phar.sha256
+          sha256sum --check build/TradeSystem.phar.sha256
 
-      - name: Upload distributable PHAR
+      - name: Upload distributable PHAR and checksum
         uses: actions/upload-artifact@v4
         with:
           name: TradeSystem-PHAR
-          path: build/TradeSystem.phar
+          path: |
+            build/TradeSystem.phar
+            build/TradeSystem.phar.sha256
           if-no-files-found: error
           retention-days: 30
 
