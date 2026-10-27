@@ -1,0 +1,16 @@
+name: TradeSystemIntegrationHarness
+main: TradeSystemIntegrationHarness\\Main
+version: 0.1.0
+api: [5.0.0]
+authors: [thedeverfankhajo-bot]
+description: Disposable-server integration checks for TradeSystem inventory commits.
+depend: [TradeSystem]
+commands:
+  tradeint:
+    description: Run TradeSystem inventory integration checks on two disposable accounts.
+    usage: "/tradeint <success|capacity> <other-player>"
+    permission: tradesystem.integration.run
+permissions:
+  tradesystem.integration.run:
+    description: Allows running destructive tests on disposable, empty player inventories.
+    default: op

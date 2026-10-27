@@ -114,7 +114,7 @@ composer update --prefer-dist
 vendor/bin/phpstan analyse --no-progress
 ```
 
-The separate `phpstan/` development environment pins the PMMP API reference to 5.44.3 and PHPStan to 2.1.46; these are analysis-only dependencies, not runtime plugin dependencies. GitHub Actions runs this analysis separately from the PHP 8.1–8.4 syntax/smoke-test matrix. The first dependency resolution generates a local `phpstan/composer.lock`; retain that lock in local workflows to make subsequent analyses reproducible. A staging PocketMine-MP API 5 server is still required to prove actual Bedrock form behavior and inventory integration. The full 21-scenario integration plan is in [`tests/README.md`](tests/README.md).
+The separate `phpstan/` development environment pins the PMMP API reference to 5.44.3 and PHPStan to 2.1.46; these are analysis-only dependencies, not runtime plugin dependencies. GitHub Actions runs this analysis separately from the PHP 8.1–8.4 syntax/smoke-test matrix. The first dependency resolution generates a local `phpstan/composer.lock`; retain that lock in local workflows to make subsequent analyses reproducible. A staging PocketMine-MP API 5 server is still required to prove actual Bedrock form behavior and inventory integration. The full 21-scenario integration plan is in [`tests/README.md`](tests/README.md). A runnable disposable-server executor harness is documented in [`tests/integration/README.md`](tests/integration/README.md); it tests live PlayerInventory objects but is not a complete Bedrock UI end-to-end test.
 
 ## Project structure
 

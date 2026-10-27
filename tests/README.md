@@ -34,6 +34,10 @@ Run the following against a disposable API 5 server with two test accounts and r
 20. Verify completed/cancelled/expired sessions release both participant mappings and request references.
 21. Verify `/trade`, subcommands, permission checks, and exact-name resolution.
 
+## Runnable API 5 inventory harness
+
+See [`tests/integration/README.md`](integration/README.md) for a separate test-only plugin that exercises the real executor against two live, initially empty player inventories. It covers successful item transfer and no-space preflight rejection. It must run only on a disposable staging server; it is not part of the production plugin and has not been run as part of the current CI workflow.
+
 ## Deployment safety note
 
 The executor validates both inventories, simulates capacity after outgoing removals, applies the plan synchronously, and restores snapshots if application throws or post-application verification fails. If rollback cannot be verified, both player UUIDs are persisted in `plugin_data/TradeSystem/trade-quarantine.json`; malformed/unreadable/unwritable quarantine data fail-closes the whole trading system. Recovery requires stopping the server, reconciling inventories from trusted state, removing only resolved UUID entries, and restarting. No user-space plugin can make updates to two distinct player inventories durable and crash-atomic across an abrupt process termination without an additional persistent transaction journal and recovery protocol. Test this plugin on a staging server before production use and keep regular server backups.
