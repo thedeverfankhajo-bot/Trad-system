@@ -7,6 +7,7 @@ namespace TradSystem\trade;
 use pocketmine\item\Item;
 use pocketmine\player\Player;
 use pocketmine\world\sound\PopSound;
+use Ramsey\Uuid\Uuid;
 use Throwable;
 use TradSystem\Main;
 use TradSystem\config\TradeConfig;
@@ -897,21 +898,16 @@ final class TradeManager{
     }
 
     private function findOnlinePlayer(string $name) : ?Player{
-        foreach($this->plugin->getServer()->getOnlinePlayers() as $player){
-            if(strcasecmp($player->getName(), $name) === 0){
-                return $player;
-            }
-        }
-        return null;
+        return $this->plugin->getServer()->getPlayerExact($name);
     }
 
     private function findOnlinePlayerByUuid(string $uuid) : ?Player{
-        foreach($this->plugin->getServer()->getOnlinePlayers() as $player){
-            if($player->getUniqueId()->toString() === $uuid){
-                return $player;
-            }
+        try{
+            $parsedUuid = Uuid::fromString($uuid);
+        }catch(\InvalidArgumentException){
+            return null;
         }
-        return null;
+        return $this->plugin->getServer()->getPlayerByUUID($parsedUuid);
     }
 
     private function playSound(Player $player) : void{

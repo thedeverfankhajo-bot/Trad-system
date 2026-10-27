@@ -211,6 +211,16 @@ $manifest = (string) file_get_contents($root . '/plugin.yml');
 $assert(str_contains($manifest, 'name: TradeSystem'), 'plugin.yml declares the plugin name.');
 $assert(str_contains($manifest, 'main: TradSystem\\Main'), 'plugin.yml points to the Main class.');
 $managerSource = (string) file_get_contents($root . '/src/TradSystem/trade/TradeManager.php');
+$lookupStart = strpos($managerSource, 'private function findOnlinePlayerByUuid(string $uuid) : ?Player{');
+$lookupEnd = $lookupStart !== false ? strpos($managerSource, "\n    private function playSound", $lookupStart) : false;
+$uuidLookupBody = ($lookupStart !== false && $lookupEnd !== false) ? substr($managerSource, $lookupStart, $lookupEnd - $lookupStart) : '';
+$assert(
+    str_contains($managerSource, 'return $this->plugin->getServer()->getPlayerExact($name);') &&
+    str_contains($uuidLookupBody, '->getPlayerByUUID($parsedUuid)') &&
+    !str_contains($uuidLookupBody, 'getOnlinePlayers()'),
+    'Player name and UUID resolution use PMMP indexed lookup APIs rather than repeatedly scanning every online player.'
+);
+
 $assert(
     str_contains($managerSource, 'CRITICAL_EXECUTOR_EXCEPTION') &&
     str_contains($managerSource, 'inventory outcome is unknown') &&
