@@ -1,5 +1,7 @@
 # TradeSystem
 
+![TradeSystem project illustration — not an in-game screenshot](assets/tradesystem-banner.svg)
+
 A dependency-free player-to-player **item trading** plugin for PocketMine-MP API 5 / Minecraft Bedrock. It uses the public `pocketmine\form\Form` interface and `Player::sendForm()` rather than requiring a separate FormAPI plugin.
 
 [![Tests](https://github.com/thedeverfankhajo-bot/Trad-system/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/thedeverfankhajo-bot/Trad-system/actions/workflows/tests.yml) [![Latest release](https://img.shields.io/github/v/release/thedeverfankhajo-bot/Trad-system?display_name=tag)](https://github.com/thedeverfankhajo-bot/Trad-system/releases)
