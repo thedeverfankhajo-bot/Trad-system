@@ -173,6 +173,18 @@ $assert(
     'Item snapshot matching uses exact public comparison without deprecated equality arguments.'
 );
 $assert(str_contains($managerSource, 'ItemDisplayName::sanitize($offer->getItemName())'), 'Offer summaries sanitize item-controlled display names.');
+$assert(str_contains($managerSource, 'private bool $shuttingDown = false;') && str_contains($managerSource, '$this->shuttingDown = true;'), 'Shutdown sets a persistent in-memory guard against stale callbacks.');
+$shutdownStart = strpos($managerSource, 'public function shutdown() : void{');
+$shutdownEnd = $shutdownStart !== false ? strpos($managerSource, 'private function startSession', $shutdownStart) : false;
+$shutdownBody = ($shutdownStart !== false && $shutdownEnd !== false) ? substr($managerSource, $shutdownStart, $shutdownEnd - $shutdownStart) : '';
+$assert(
+    $shutdownBody !== '' &&
+    str_contains($shutdownBody, 'TradeState::COMMITTING') &&
+    !str_contains($shutdownBody, '$this->activeByPlayer = [];') &&
+    !str_contains($shutdownBody, '$this->sessions = [];'),
+    'Shutdown preserves the owner/session references for an in-flight commit until the executor result resolves.'
+);
+$assert(str_contains($managerSource, "if(\$this->shuttingDown){\n                \$session->abortCommit();") && str_contains($managerSource, "ABORTED_DURING_SHUTDOWN"), 'A failed preflight during shutdown terminates without reopening a stale form.');
 $assert(str_contains($executorSource, '$inventory->setContents($contents);'), 'Inventory plans are applied as a complete contents snapshot.');
 $assert(
     strpos($executorSource, '$this->contentsMatchSafely($inventoryOne, $beforeOne);') !== false &&

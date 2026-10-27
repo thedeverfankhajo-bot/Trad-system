@@ -34,6 +34,8 @@ final class TradeManager{
     private array $requestTimes = [];
     /** @var array<string, int> player UUID => last request time */
     private array $lastRequestAt = [];
+    /** Prevent stale form callbacks or re-entrant hooks from creating new work during shutdown. */
+    private bool $shuttingDown = false;
     private TradeQuarantineStore $quarantineStore;
 
     public function __construct(
@@ -141,7 +143,7 @@ final class TradeManager{
     /** @return list<Player> */
     public function getEligiblePlayers(Player $player) : array{
         $sourceUuid = $player->getUniqueId()->toString();
-        if($this->quarantineStore->isUnsafe() || $this->quarantineStore->contains($sourceUuid)){
+        if($this->shuttingDown || $this->quarantineStore->isUnsafe() || $this->quarantineStore->contains($sourceUuid)){
             return [];
         }
         $eligible = [];
@@ -184,6 +186,10 @@ final class TradeManager{
     private function sendRequestToTarget(Player $sender, Player $target) : void{
         $senderUuid = $sender->getUniqueId()->toString();
         $targetUuid = $target->getUniqueId()->toString();
+        if($this->shuttingDown){
+            $this->messages->send($sender, 'trade-system-disabled');
+            return;
+        }
         if($this->quarantineStore->isUnsafe()){
             $this->messages->send($sender, 'trade-system-disabled');
             return;
@@ -463,6 +469,12 @@ final class TradeManager{
         }
 
         if($result->reason === 'inventory-changed' || $result->reason === 'no-space' || $result->reason === 'invalid-state' || $result->reason === 'invalid-participants'){
+            if($this->shuttingDown){
+                $session->abortCommit();
+                $this->finishSession($session);
+                $this->audit('ABORTED_DURING_SHUTDOWN', $session, $result->reason);
+                return;
+            }
             $onlineOne = $this->findOnlinePlayerByUuid($session->partyOneUuid);
             $onlineTwo = $this->findOnlinePlayerByUuid($session->partyTwoUuid);
             if($onlineOne === null || $onlineTwo === null){
@@ -533,6 +545,9 @@ final class TradeManager{
 
     public function getSessionFor(Player $player, string $sessionId) : ?TradeSession{
         $uuid = $player->getUniqueId()->toString();
+        if($this->shuttingDown){
+            return null;
+        }
         if($this->quarantineStore->isUnsafe()){
             $this->cancelSessionsForSafetyMode();
             return null;
@@ -599,6 +614,9 @@ final class TradeManager{
     }
 
     public function tick() : void{
+        if($this->shuttingDown){
+            return;
+        }
         if($this->quarantineStore->isUnsafe()){
             $this->cancelSessionsForSafetyMode();
             return;
@@ -621,26 +639,26 @@ final class TradeManager{
     }
 
     public function shutdown() : void{
+        $this->shuttingDown = true;
         foreach(array_values($this->sessions) as $session){
             if($session->getState() === TradeState::COMMITTING){
+                // The executor must resolve this synchronous operation before its owner mappings can be released.
                 continue;
             }
-            if($session->cancel()){
-                $this->finishSession($session);
-            }
+            $session->cancel();
+            $this->finishSession($session);
         }
         $this->requests = [];
         $this->requestByPair = [];
         $this->requestTimes = [];
         $this->lastRequestAt = [];
-        $this->activeByPlayer = [];
-        $this->sessions = [];
+        // Keep only in-flight COMMITTING sessions/mappings until confirmTrade() handles the executor result.
     }
 
     private function startSession(Player $partyOne, Player $partyTwo) : void{
         $uuidOne = $partyOne->getUniqueId()->toString();
         $uuidTwo = $partyTwo->getUniqueId()->toString();
-        if($this->quarantineStore->isUnsafe()){
+        if($this->shuttingDown || $this->quarantineStore->isUnsafe()){
             $this->messages->send($partyOne, 'trade-system-disabled');
             return;
         }

@@ -2,7 +2,7 @@
 
 ## Automated checks in this repository
 
-- `php tests/run.php`: smoke tests for request expiration, participant authorization, state transitions, two-party confirmation, duplicate commit prevention, rejection of ordinary cancellation during `COMMITTING`, explicit abort after executor failure, confirmation reset, safe one-pass message interpolation, item display-name sanitization, persistent rollback quarantine, corrupt/list-root fail-closed behavior, incomplete-write safety markers, failed-storage handling, and required project files/configuration.
+- `php tests/run.php`: smoke tests for request expiration, participant authorization, state transitions, two-party confirmation, duplicate commit prevention, rejection of ordinary cancellation during `COMMITTING`, explicit abort after executor failure, shutdown preservation of in-flight session mappings, shutdown guard against stale form callbacks, confirmation reset, safe one-pass message interpolation, item display-name sanitization, persistent rollback quarantine, corrupt/list-root fail-closed behavior, incomplete-write safety markers, failed-storage handling, and required project files/configuration.
 - `composer lint`: PHP syntax validation for every source and test file.
 - GitHub Actions: Composer manifest validation, PHP syntax checks, smoke tests, and YAML parsing of the manifest and resources on PHP 8.1–8.4. A separate PHPStan job analyzes the source against the PocketMine-MP API 5.44.3 reference.
 
