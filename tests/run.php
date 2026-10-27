@@ -5,6 +5,7 @@ declare(strict_types=1);
 use TradSystem\trade\TradeRequest;
 use TradSystem\trade\TradeSession;
 use TradSystem\trade\TradeState;
+use TradSystem\trade\TradeJournalStore;
 use TradSystem\trade\TradeQuarantineStore;
 use TradSystem\util\ItemDisplayName;
 use TradSystem\util\MessageFormatter;
