@@ -24,10 +24,6 @@ final class TradePlayerDataSaver implements Listener{
         $uuid = $player->getUniqueId()->toString();
         $this->saveResults[$uuid][] = null;
         $index = array_key_last($this->saveResults[$uuid]);
-        if($index === null){
-            unset($this->saveResults[$uuid]);
-            return false;
-        }
 
         try{
             $player->save();
@@ -58,8 +54,6 @@ final class TradePlayerDataSaver implements Listener{
             return;
         }
         $index = array_key_last($this->saveResults[$uuid]);
-        if($index !== null){
-            $this->saveResults[$uuid][$index] = !$event->isCancelled();
-        }
+        $this->saveResults[$uuid][$index] = !$event->isCancelled();
     }
 }

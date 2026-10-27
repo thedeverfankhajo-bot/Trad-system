@@ -365,10 +365,18 @@ $assert(
 );
 $assert(str_contains($managerSource, "if(\$this->shuttingDown){\n                \$session->abortCommit();") && str_contains($managerSource, "ABORTED_DURING_SHUTDOWN"), 'A failed preflight during shutdown terminates without reopening a stale form.');
 $assert(str_contains($executorSource, '$inventory->setContents($contents);'), 'Inventory plans are applied as a complete contents snapshot.');
+$restoreBothStart = strpos($executorSource, 'private function restoreBoth(');
+$restoreBothEnd = $restoreBothStart !== false ? strpos($executorSource, 'private function restore(', $restoreBothStart) : false;
+$restoreBothBody = ($restoreBothStart !== false && $restoreBothEnd !== false) ? substr($executorSource, $restoreBothStart, $restoreBothEnd - $restoreBothStart) : '';
+$secondRestorePosition = strpos($restoreBothBody, '$restoredTwo = $this->restore($inventoryTwo, $beforeTwo);');
+$verifyOnePosition = strpos($restoreBothBody, '$this->contentsMatchSafely($inventoryOne, $beforeOne)');
+$verifyTwoPosition = strpos($restoreBothBody, '$this->contentsMatchSafely($inventoryTwo, $beforeTwo)');
 $assert(
-    strpos($executorSource, '$this->contentsMatchSafely($inventoryOne, $beforeOne);') !== false &&
-    strpos($executorSource, '$this->contentsMatchSafely($inventoryTwo, $beforeTwo);') !== false &&
-    strpos($executorSource, '$this->contentsMatchSafely($inventoryOne, $beforeOne);') > strpos($executorSource, '$restoredTwo = $this->restore($inventoryTwo, $beforeTwo);'),
+    $secondRestorePosition !== false &&
+    $verifyOnePosition !== false &&
+    $verifyTwoPosition !== false &&
+    $verifyOnePosition > $secondRestorePosition &&
+    $verifyTwoPosition > $secondRestorePosition,
     'Rollback revalidates both inventories after both restoration operations so cross-inventory listener effects cannot pass unnoticed.'
 );
 $integrationHarnessSource = (string) file_get_contents($root . '/tests/integration/src/TradeSystemIntegrationHarness/Main.php');
