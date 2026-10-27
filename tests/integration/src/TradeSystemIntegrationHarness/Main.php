@@ -6,6 +6,7 @@ namespace TradeSystemIntegrationHarness;
 
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
+use pocketmine\block\VanillaBlocks;
 use pocketmine\inventory\PlayerInventory;
 use pocketmine\item\Item;
 use pocketmine\item\VanillaItems;
@@ -71,7 +72,7 @@ final class Main extends PluginBase{
                 $emerald->setCount(2);
                 $secondInventory->setItem(0, $emerald);
             }else{
-                $dirt = VanillaItems::DIRT();
+                $dirt = VanillaBlocks::DIRT()->asItem();
                 $dirt->setCount(64);
                 for($slot = 0; $slot < $firstInventory->getSize(); ++$slot){
                     $firstInventory->setItem($slot, clone $dirt);
