@@ -422,7 +422,7 @@ final class TradeManager{
         $partyOne = $this->findOnlinePlayerByUuid($session->partyOneUuid);
         $partyTwo = $this->findOnlinePlayerByUuid($session->partyTwoUuid);
         if($partyOne === null || $partyTwo === null){
-            $session->cancel();
+            $session->abortCommit();
             $this->finishSession($session);
             $this->messages->send($player, 'trade-partner-left', ['player' => $session->getName($otherUuid ?? '')]);
             return;
@@ -439,7 +439,7 @@ final class TradeManager{
                 'Trade executor exception escaped its recovery boundary for session ' . $sessionId .
                 ' (' . $exceptionClass . '); inventory outcome is unknown. Both participants are quarantined.'
             );
-            $session->cancel();
+            $session->abortCommit();
             $this->finishSession($session);
             $this->quarantinePlayer($session->partyOneUuid);
             $this->quarantinePlayer($session->partyTwoUuid);
@@ -463,6 +463,20 @@ final class TradeManager{
         }
 
         if($result->reason === 'inventory-changed' || $result->reason === 'no-space' || $result->reason === 'invalid-state' || $result->reason === 'invalid-participants'){
+            $onlineOne = $this->findOnlinePlayerByUuid($session->partyOneUuid);
+            $onlineTwo = $this->findOnlinePlayerByUuid($session->partyTwoUuid);
+            if($onlineOne === null || $onlineTwo === null){
+                $session->abortCommit();
+                $this->finishSession($session);
+                if($onlineOne !== null){
+                    $this->messages->send($onlineOne, 'trade-partner-left', ['player' => $session->partyTwoName]);
+                }
+                if($onlineTwo !== null){
+                    $this->messages->send($onlineTwo, 'trade-partner-left', ['player' => $session->partyOneName]);
+                }
+                $this->audit('CANCELLED_PLAYER_LEFT_DURING_COMMIT', $session, $result->reason);
+                return;
+            }
             $session->resetAfterValidationFailure();
             $key = $result->reason === 'no-space' ? 'trade-no-space' : 'trade-inventory-changed';
             $this->messages->send($partyOne, $key);
@@ -472,7 +486,7 @@ final class TradeManager{
             return;
         }
 
-        $session->cancel();
+        $session->abortCommit();
         $this->finishSession($session);
         if(!$result->rollbackSuccessful || str_starts_with($result->reason, 'rollback-failed')){
             $this->quarantinePlayer($session->partyOneUuid);
@@ -561,14 +575,15 @@ final class TradeManager{
         $sessionId = $this->activeByPlayer[$uuid] ?? null;
         if($sessionId !== null && isset($this->sessions[$sessionId])){
             $session = $this->sessions[$sessionId];
-            $partnerUuid = $session->getOtherUuid($uuid);
-            $session->cancel();
-            $this->finishSession($session);
-            $partner = $partnerUuid !== null ? $this->findOnlinePlayerByUuid($partnerUuid) : null;
-            if($partner !== null){
-                $this->messages->send($partner, 'trade-partner-left', ['player' => $player->getName()]);
+            if($session->getState() !== TradeState::COMMITTING && $session->cancel()){
+                $partnerUuid = $session->getOtherUuid($uuid);
+                $this->finishSession($session);
+                $partner = $partnerUuid !== null ? $this->findOnlinePlayerByUuid($partnerUuid) : null;
+                if($partner !== null){
+                    $this->messages->send($partner, 'trade-partner-left', ['player' => $player->getName()]);
+                }
+                $this->audit('CANCELLED_PLAYER_LEFT', $session, 'player ' . $uuid . ' disconnected');
             }
-            $this->audit('CANCELLED_PLAYER_LEFT', $session, 'player ' . $uuid . ' disconnected');
         }
 
         foreach(array_values($this->requests) as $request){
@@ -596,8 +611,10 @@ final class TradeManager{
                 $this->expireSession($session);
                 continue;
             }
-            if($this->findOnlinePlayerByUuid($session->partyOneUuid) === null || $this->findOnlinePlayerByUuid($session->partyTwoUuid) === null){
-                $session->cancel();
+            if(
+                ($this->findOnlinePlayerByUuid($session->partyOneUuid) === null || $this->findOnlinePlayerByUuid($session->partyTwoUuid) === null) &&
+                $session->cancel()
+            ){
                 $this->finishSession($session);
             }
         }
@@ -605,8 +622,12 @@ final class TradeManager{
 
     public function shutdown() : void{
         foreach(array_values($this->sessions) as $session){
-            $session->cancel();
-            $this->finishSession($session);
+            if($session->getState() === TradeState::COMMITTING){
+                continue;
+            }
+            if($session->cancel()){
+                $this->finishSession($session);
+            }
         }
         $this->requests = [];
         $this->requestByPair = [];

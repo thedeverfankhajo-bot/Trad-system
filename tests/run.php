@@ -66,6 +66,16 @@ $assert($recoverable->confirm('uuid-a') === true, 'A session can be reviewed and
 $assert($recoverable->cancel() === true, 'An active session can be cancelled.');
 $assert($recoverable->getState() === TradeState::CANCELLED, 'Cancellation marks the state terminal.');
 
+$commitLocked = new TradeSession('session-3', 'uuid-a', 'uuid-b', 'Alice', 'Bob', time() + 300);
+$commitLocked->confirm('uuid-a');
+$commitLocked->confirm('uuid-b');
+$assert($commitLocked->beginCommit() === true, 'A dedicated session enters COMMITTING before executor resolution.');
+$assert($commitLocked->cancel() === false, 'Ordinary cancellation cannot interrupt an in-flight commit.');
+$assert($commitLocked->getState() === TradeState::COMMITTING, 'A rejected cancellation leaves the in-flight commit state unchanged.');
+$assert($commitLocked->abortCommit() === true, 'A failed executor result can explicitly abort the commit after recovery.');
+$assert($commitLocked->getState() === TradeState::CANCELLED, 'An explicitly aborted commit becomes terminal.');
+$assert($commitLocked->abortCommit() === false, 'A resolved commit cannot be aborted a second time.');
+
 $request = TradeRequest::create('uuid-a', 'uuid-b', 'Alice', 'Bob', 100);
 $assert($request->senderUuid === 'uuid-a' && $request->receiverUuid === 'uuid-b', 'A request retains the correct UUID parties.');
 $assert($request->isExpired(99) === false, 'A request is valid before its expiry timestamp.');

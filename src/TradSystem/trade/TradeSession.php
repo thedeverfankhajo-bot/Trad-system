@@ -131,8 +131,20 @@ final class TradeSession{
         return true;
     }
 
+    /**
+     * Marks an in-flight commit as failed after the executor has returned without success.
+     * Ordinary cancellation must never interrupt inventory mutation mid-transaction.
+     */
+    public function abortCommit() : bool{
+        if($this->state !== TradeState::COMMITTING){
+            return false;
+        }
+        $this->state = TradeState::CANCELLED;
+        return true;
+    }
+
     public function cancel() : bool{
-        if($this->state->isTerminal()){
+        if($this->state->isTerminal() || $this->state === TradeState::COMMITTING){
             return false;
         }
         $this->state = TradeState::CANCELLED;

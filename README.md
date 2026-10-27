@@ -85,6 +85,7 @@ Before final commit, offered items remain where they were and are not escrowed o
 ## Security model and known limits
 
 - All transaction decisions and inventory changes execute synchronously on the server thread.
+- Once a session enters `COMMITTING`, ordinary cancellation, quit, timeout, and shutdown cleanup do not call the normal cancel transition. The executor result must resolve it, and a failed commit is terminated through an explicit post-executor abort transition.
 - UUIDs, not display names, are the identity keys for requests and sessions.
 - Items are compared using PMMP's public item equality with damage and compound-tag checks plus an explicit count check.
 - A source stack must still match its exact snapshot at commit time. If it has changed, the trade is blocked and players must review/edit the offer.
